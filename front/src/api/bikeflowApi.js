@@ -22,6 +22,7 @@ export const fetchReservations = (params = {}) => {
   const qs = new URLSearchParams(params).toString()
   return request(`/reservations${qs ? '?' + qs : ''}`)
 }
+export const fetchReservation = (id) => request(`/reservations/${id}`)
 export const createReservation = (data) => request('/reservations', { method: 'POST', body: JSON.stringify(data) })
 export const cancelReservation = (id) => request(`/reservations/${id}/cancel`, { method: 'PATCH' })
 export const fetchReparations = (bikeId = null) => {

@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
-import { fetchBikes, fetchReparations, createReparation, closeReparation, fetchReservations, createReturn, createBike, fetchReturns } from '../api/bikeflowApi.js'
+import { useMemo, useState, useEffect } from 'react'
+import { fetchBikes, fetchReparations, createReparation, closeReparation, fetchReservations, createReturn, createBike, fetchReturns, fetchUsers, cancelReservation } from '../api/bikeflowApi.js'
 
 export default function AdminPage({ mode = 'manage' }) {
   const [bikes, setBikes] = useState([])
   const [reparations, setReparations] = useState([])
   const [reservations, setReservations] = useState([])
   const [returnsHistory, setReturnsHistory] = useState([])
+  const [users, setUsers] = useState([])
   const [bikeForm, setBikeForm] = useState({ bike_name: '', bike_code: '', bike_size: '', bike_description: '' })
   const [repForm, setRepForm] = useState({ bike_id: '', reparation_description: '' })
   const [returnForm, setReturnForm] = useState({ reservation_id: '', bike_id: '', return_state: '', problem_state: '', return_comment: '' })
@@ -19,11 +20,12 @@ export default function AdminPage({ mode = 'manage' }) {
   }
 
   async function load() {
-    const [b, r, res, ret] = await Promise.all([fetchBikes(), fetchReparations(), fetchReservations(), fetchReturns()])
+    const [b, r, res, ret, usr] = await Promise.all([fetchBikes(), fetchReparations(), fetchReservations(), fetchReturns(), fetchUsers()])
     setBikes(b)
     setReparations(r)
     setReservations(res)
     setReturnsHistory(ret)
+    setUsers(usr)
   }
 
   useEffect(() => { load() }, [])
@@ -70,35 +72,91 @@ export default function AdminPage({ mode = 'manage' }) {
       })
       setReturnForm({ reservation_id: '', bike_id: '', return_state: '', problem_state: '', return_comment: '' })
       notify('Retour enregistré.')
+      load()
     } catch (err) { notify(err.message, true) }
   }
 
+  async function handleDeleteReservation(id) {
+    try {
+      await cancelReservation(id)
+      notify('Réservation supprimée.')
+      load()
+    } catch (err) { notify(err.message, true) }
+  }
+
+  function getReservationUserLabel(reservation) {
+    return reservation.user_name_free || users.find((user) => user.user_id === reservation.user_id)?.user_name || `Utilisateur ${reservation.user_id}`
+  }
+
+  function getBikeLabel(bikeId) {
+    const bike = bikes.find((item) => item.bike_id === bikeId)
+    return bike ? `${bike.bike_name} (${bike.bike_code})` : `Vélo ${bikeId}`
+  }
+
   const openReparations = reparations.filter((r) => !r.reparation_end_date)
+  const dashboard = useMemo(() => {
+    const reservationsByPerson = new Map()
+    reservations.forEach((item) => {
+      const label = item.user_name_free || users.find((user) => user.user_id === item.user_id)?.user_name || `Utilisateur ${item.user_id}`
+      reservationsByPerson.set(label, (reservationsByPerson.get(label) || 0) + 1)
+    })
+    const topPeople = Array.from(reservationsByPerson.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+
+    return {
+      totalReservations: reservations.length,
+      totalReturns: returnsHistory.length,
+      totalUsers: users.length,
+      topPeople,
+    }
+  }, [reservations, returnsHistory, users])
 
   if (mode === 'returns') {
+    const flaggedReturns = returnsHistory.filter((item) => item.return_state === 'ko' || (item.problem_state && item.problem_state !== 'Aucun'))
     return (
-      <div className="page">
-        <h1>Historique des retours</h1>
+      <div className="page returns-page">
+        <section className="returns-hero">
+          <div>
+            <p className="hero-kicker">Suivi atelier</p>
+            <h1>Historique des retours</h1>
+            <p className="hero-copy">Retrouve rapidement les vélos revenus en bon état et ceux qui demandent un contrôle.</p>
+          </div>
+          <div className="returns-summary-grid">
+            <article className="returns-summary-card">
+              <span>Total retours</span>
+              <strong>{returnsHistory.length}</strong>
+            </article>
+            <article className="returns-summary-card returns-summary-alert">
+              <span>À vérifier</span>
+              <strong>{flaggedReturns.length}</strong>
+            </article>
+          </div>
+        </section>
 
         {msg && <div className="alert-success">{msg}</div>}
         {error && <div className="alert-error">{error}</div>}
 
-        <section className="section">
+        <section className="section returns-table-section">
           <h2>Retours enregistrés ({returnsHistory.length})</h2>
           {returnsHistory.length === 0 ? (
-            <p className="empty-list">Aucun retour enregistre.</p>
+            <p className="empty-list">Aucun retour enregistré.</p>
           ) : (
-            <table className="reservation-table">
+            <table className="reservation-table returns-table">
               <thead>
-                <tr><th>Date</th><th>Reservation</th><th>Velo</th><th>Etat</th><th>Problemes</th><th>Commentaire</th></tr>
+                <tr><th>Date</th><th>Réservation</th><th>Vélo</th><th>État</th><th>Problèmes</th><th>Commentaire</th></tr>
               </thead>
               <tbody>
                 {returnsHistory.map((item) => (
-                  <tr key={item.return_id}>
+                  <tr key={item.return_id} className={item.return_state === 'ko' || (item.problem_state && item.problem_state !== 'Aucun') ? 'return-row-alert' : ''}>
                     <td>{item.return_date ? item.return_date.slice(0, 16).replace('T', ' ') : '-'}</td>
                     <td>{item.reservation_code || item.reservation_id}</td>
                     <td>{item.bike_name || item.bike_id}</td>
-                    <td>{item.return_state || '-'}</td>
+                    <td>
+                      <span className={`return-state-pill ${item.return_state === 'ko' ? 'danger' : 'ok'}`}>
+                        {item.return_state || '-'}
+                      </span>
+                    </td>
                     <td>{item.problem_state || 'Aucun'}</td>
                     <td>{item.return_comment || '-'}</td>
                   </tr>
@@ -117,6 +175,55 @@ export default function AdminPage({ mode = 'manage' }) {
 
       {msg && <div className="alert-success">{msg}</div>}
       {error && <div className="alert-error">{error}</div>}
+
+      <section className="section">
+        <h2>Dashboard</h2>
+        <div className="dashboard-grid">
+          <div className="dashboard-card">
+            <span className="dashboard-label">Reservations</span>
+            <strong>{dashboard.totalReservations}</strong>
+            <p>Total des réservations actives.</p>
+          </div>
+          <div className="dashboard-card">
+            <span className="dashboard-label">Retours</span>
+            <strong>{dashboard.totalReturns}</strong>
+            <p>Retours déjà saisis par l'équipe.</p>
+          </div>
+          <div className="dashboard-card">
+            <span className="dashboard-label">Reparations</span>
+            <strong>{openReparations.length}</strong>
+            <p>Vélos actuellement immobilisés.</p>
+          </div>
+          <div className="dashboard-card">
+            <span className="dashboard-label">Utilisateurs</span>
+            <strong>{dashboard.totalUsers}</strong>
+            <p>Comptes recensés en base locale.</p>
+          </div>
+        </div>
+        <div className="dashboard-split">
+          <div className="dashboard-panel">
+            <h3>Personnes qui réservent le plus</h3>
+            {dashboard.topPeople.length === 0 ? (
+              <p className="empty-list">Aucune réservation enregistrée.</p>
+            ) : (
+              <div className="dashboard-list">
+                {dashboard.topPeople.map(([name, count]) => (
+                  <div key={name} className="dashboard-list-item">
+                    <span>{name}</span>
+                    <strong>{count}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="dashboard-panel dashboard-panel-warning">
+            <h3>Consignes de sécurité</h3>
+            <p>Vérifier les freins, la pression des pneus et l'éclairage avant chaque départ.</p>
+            <p>Porter un casque, signaler toute chute et ne jamais laisser le vélo sans antivol.</p>
+            <p>Au retour, refermer l'antivol, ranger le vélo à sa place et déclarer tout incident dans l'outil.</p>
+          </div>
+        </div>
+      </section>
 
       <section className="section">
         <h2>Réparations en cours ({openReparations.length})</h2>
@@ -149,6 +256,33 @@ export default function AdminPage({ mode = 'manage' }) {
                   </tr>
                 )
               })}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="section">
+        <h2>Réservations actives</h2>
+        {reservations.length === 0 ? (
+          <p className="empty-list">Aucune réservation active.</p>
+        ) : (
+          <table className="reservation-table">
+            <thead>
+              <tr><th>Code</th><th>Personne</th><th>Vélo</th><th>Début</th><th>Fin</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {reservations.map((reservation) => (
+                <tr key={reservation.reservation_id}>
+                  <td><code>{reservation.reservation_code}</code></td>
+                  <td>{getReservationUserLabel(reservation)}</td>
+                  <td>{getBikeLabel(reservation.bike_id)}</td>
+                  <td>{reservation.reservation_date?.replace('T', ' ').slice(0, 16)}</td>
+                  <td>{reservation.return_date?.replace('T', ' ').slice(0, 16)}</td>
+                  <td className="admin-reservation-actions">
+                    <button className="btn-cancel" onClick={() => handleDeleteReservation(reservation.reservation_id)}>Supprimer</button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}

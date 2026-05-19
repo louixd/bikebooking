@@ -1,4 +1,4 @@
-export default function ReservationList({ reservations, bikes, users, currentUser, onCancel, onReturn }) {
+export default function ReservationList({ reservations, bikes, users, currentUser, guestReservationIds = [], onCancel, onReturn, showCancel = true }) {
   function getBikeName(id) {
     return bikes.find((b) => b.bike_id === id)?.bike_name || `Vélo ${id}`
   }
@@ -8,7 +8,7 @@ export default function ReservationList({ reservations, bikes, users, currentUse
   }
 
   function canManageReservation(reservation) {
-    if (!currentUser) return false
+    if (!currentUser) return guestReservationIds.includes(reservation.reservation_id)
     if (currentUser.is_admin) return true
     return reservation.user_id === currentUser.user_id
   }
@@ -43,11 +43,11 @@ export default function ReservationList({ reservations, bikes, users, currentUse
                   Retour
                 </button>
               )}
-              {canManageReservation(r) ? (
+              {showCancel && canManageReservation(r) ? (
                 <button className="btn-cancel" onClick={() => onCancel(r.reservation_id)}>
                   Annuler
                 </button>
-              ) : (
+              ) : !showCancel && onReturn && canManageReservation(r) ? null : (
                 <span className="reservation-muted">Lecture seule</span>
               )}
             </td>

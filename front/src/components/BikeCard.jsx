@@ -73,11 +73,15 @@ function BikeIllustration({ variant }) {
   )
 }
 
-export default function BikeCard({ bike, onReserve }) {
+export default function BikeCard({ bike, onReserve, canReserve = false }) {
   const family = getBikeFamily(bike.bike_description)
   const bikeName = formatBikeName(bike.bike_name)
   const bikeType = getBikeTypeLabel(bike.bike_description)
   const bikeSize = getBikeSizeLabel(bike.bike_size)
+  const statusLabel = bike.availability_label || (bike.is_available ? 'Disponible' : 'Indisponible')
+  const reserveDisabled = bike.reserve_disabled ?? !bike.is_available
+  const statusClass = bike.status_variant === 'ko' ? 'status-ko' : 'status-ok'
+  const reserveClass = bike.status_variant === 'ko' ? 'btn-reserve btn-reserve-danger' : 'btn-reserve'
 
   return (
     <div className={`bike-card ${bike.is_available ? 'available' : 'unavailable'}`}>
@@ -89,16 +93,18 @@ export default function BikeCard({ bike, onReserve }) {
         <p className="bike-type">{bikeType}</p>
         <p className="bike-size">{bikeSize}</p>
       </div>
-      <div className={`bike-status ${bike.is_available ? 'status-ok' : 'status-ko'}`}>
-        {bike.is_available ? 'Disponible' : 'Indisponible'}
+      <div className={`bike-status ${statusClass}`}>
+        {statusLabel}
       </div>
-      <button
-        className="btn-reserve"
-        onClick={() => onReserve(bike)}
-        disabled={!bike.is_available}
-      >
-        Réserver
-      </button>
+      {canReserve ? (
+        <button
+          className={reserveClass}
+          onClick={() => onReserve(bike)}
+          disabled={reserveDisabled}
+        >
+          {reserveDisabled ? 'Déjà pris' : 'Réserver'}
+        </button>
+      ) : null}
     </div>
   )
 }

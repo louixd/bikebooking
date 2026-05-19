@@ -1,16 +1,54 @@
-// Génère toutes les heures et demi-heures de 00:00 à 23:30
+import { useMemo, useState } from 'react'
+
+// Génère toutes les heures et demi-heures de 08:00 à 18:00
 function generateTimeOptions() {
   const times = []
-  for (let h = 0; h < 24; h++) {
+  for (let h = 8; h <= 18; h++) {
     times.push(`${String(h).padStart(2, '0')}:00`)
-    times.push(`${String(h).padStart(2, '0')}:30`)
+    if (h < 18) {
+      times.push(`${String(h).padStart(2, '0')}:30`)
+    }
   }
   return times
 }
 const TIME_OPTIONS = generateTimeOptions()
 
+function formatMonthLabel(date) {
+  return new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(date)
+}
+
+function buildCalendarDays(cursorDate, today) {
+  const year = cursorDate.getFullYear()
+  const month = cursorDate.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const startOffset = (firstDay.getDay() + 6) % 7
+  const startDate = new Date(year, month, 1 - startOffset)
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const value = new Date(startDate)
+    value.setDate(startDate.getDate() + index)
+    return {
+      key: value.toISOString(),
+      date: value,
+      iso: value.toISOString().split('T')[0],
+      isCurrentMonth: value.getMonth() === month,
+      isPast: value < today,
+    }
+  })
+}
+
 export default function SlotPicker({ value, onChange }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayIso = today.toISOString().split('T')[0]
+  const selectedDate = value.start_date || todayIso
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+  const [monthCursor, setMonthCursor] = useState(() => {
+    const base = selectedDate ? new Date(`${selectedDate}T00:00:00`) : new Date()
+    return new Date(base.getFullYear(), base.getMonth(), 1)
+  })
+
+  const calendarDays = useMemo(() => buildCalendarDays(monthCursor, today), [monthCursor, todayIso])
 
   function update(patch) {
     const next = { ...value, ...patch }
@@ -36,32 +74,69 @@ export default function SlotPicker({ value, onChange }) {
   }
 
   return (
-    <div className="slot-picker" style={{ flexWrap: 'wrap', gap: '1rem' }}>
-      {/* Date début */}
-      <div className="slot-picker-date">
-        <label htmlFor="slot-start-date">Date de début</label>
-        <input
-          id="slot-start-date"
-          type="date"
-          min={today}
-          value={value.start_date || ''}
-          onChange={(e) => {
-            const d = e.target.value
-            // Si date fin est avant date début, on la remet à jour
-            const end_date = value.end_date && value.end_date >= d ? value.end_date : d
-            update({ start_date: d, end_date, date: d })
-          }}
-        />
+    <div className="slot-picker slot-picker-calendar">
+      <div className="slot-picker-calendar-panel">
+        <div className="slot-picker-calendar-head">
+          <div>
+            <label>Date de réservation</label>
+            <button
+              type="button"
+              className="calendar-trigger"
+              onClick={() => setIsCalendarOpen((prev) => !prev)}
+            >
+              {selectedDate}
+            </button>
+          </div>
+          <span className="calendar-hours-badge">08:00 - 18:00</span>
+        </div>
+
+        {isCalendarOpen && (
+          <div className="calendar-popover">
+            <div className="calendar-toolbar">
+              <button type="button" className="calendar-nav" onClick={() => setMonthCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
+                {'<'}
+              </button>
+              <strong>{formatMonthLabel(monthCursor)}</strong>
+              <button type="button" className="calendar-nav" onClick={() => setMonthCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
+                {'>'}
+              </button>
+            </div>
+            <div className="calendar-weekdays">
+              {['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'].map((day) => <span key={day}>{day}</span>)}
+            </div>
+            <div className="calendar-grid">
+              {calendarDays.map((day) => (
+                <button
+                  type="button"
+                  key={day.key}
+                  className={`calendar-day ${day.isCurrentMonth ? '' : 'muted'} ${day.iso === selectedDate ? 'selected' : ''}`.trim()}
+                  disabled={day.isPast}
+                  onClick={() => {
+                    update({
+                      start_date: day.iso,
+                      end_date: day.iso,
+                      date: day.iso,
+                      start_time: value.start_time || '08:00',
+                      end_time: value.end_time || '09:00',
+                    })
+                    setIsCalendarOpen(false)
+                  }}
+                >
+                  {day.date.getDate()}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Heure début */}
       <div className="slot-picker-date">
-        <label htmlFor="slot-start-time">Heure de début</label>
+        <label htmlFor="slot-start-time">Début</label>
         <select
           id="slot-start-time"
           value={value.start_time || ''}
-          onChange={(e) => update({ start_time: e.target.value })}
-          disabled={!value.start_date}
+          onChange={(e) => update({ start_time: e.target.value, start_date: selectedDate, end_date: selectedDate, date: selectedDate })}
+          disabled={!selectedDate}
         >
           <option value="">--:--</option>
           {TIME_OPTIONS.map((t) => (
@@ -70,27 +145,13 @@ export default function SlotPicker({ value, onChange }) {
         </select>
       </div>
 
-      {/* Date fin */}
       <div className="slot-picker-date">
-        <label htmlFor="slot-end-date">Date de fin</label>
-        <input
-          id="slot-end-date"
-          type="date"
-          min={value.start_date || today}
-          value={value.end_date || ''}
-          onChange={(e) => update({ end_date: e.target.value })}
-          disabled={!value.start_date}
-        />
-      </div>
-
-      {/* Heure fin */}
-      <div className="slot-picker-date">
-        <label htmlFor="slot-end-time">Heure de fin</label>
+        <label htmlFor="slot-end-time">Retour</label>
         <select
           id="slot-end-time"
           value={value.end_time || ''}
-          onChange={(e) => update({ end_time: e.target.value })}
-          disabled={!value.end_date}
+          onChange={(e) => update({ end_time: e.target.value, start_date: selectedDate, end_date: selectedDate, date: selectedDate })}
+          disabled={!selectedDate}
         >
           <option value="">--:--</option>
           {TIME_OPTIONS.map((t) => (
@@ -107,7 +168,7 @@ export default function SlotPicker({ value, onChange }) {
       )}
       {value.reservation_date && value.return_date && (
         <p style={{ color: '#27ae60', fontSize: '0.85rem', width: '100%', marginTop: '0.25rem' }}>
-          Du <strong>{value.start_date} a {value.start_time}</strong> au <strong>{value.end_date} a {value.end_time}</strong>
+          Le <strong>{value.start_date}</strong>, de <strong>{value.start_time}</strong> à <strong>{value.end_time}</strong>
         </p>
       )}
     </div>

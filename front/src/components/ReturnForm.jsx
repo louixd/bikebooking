@@ -41,7 +41,7 @@ export default function ReturnForm({ reservation, bike, onClose, onSuccess }) {
         photos,
       })
       setSuccess(true)
-      onSuccess?.()
+      await Promise.resolve(onSuccess?.())
     } catch (err) {
       setError(err.message)
     } finally {

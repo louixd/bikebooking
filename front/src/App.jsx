@@ -1,21 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import HomePage from './pages/HomePage.jsx'
 import AdminPage from './pages/AdminPage.jsx'
-import { loginLocal, registerLocal } from './api/bikeflowApi.js'
+import { loginLocal } from './api/bikeflowApi.js'
 
 const EMPTY_LOGIN = { email: '', password: '' }
-const EMPTY_REGISTER = { user_name: '', user_email: '', password: '' }
 
-function AuthModal({ initialMode = 'login', onClose, onSuccess }) {
-  const [mode, setMode] = useState(initialMode)
+function AuthModal({ onClose, onSuccess }) {
   const [loginForm, setLoginForm] = useState(EMPTY_LOGIN)
-  const [registerForm, setRegisterForm] = useState(EMPTY_REGISTER)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    setMode(initialMode)
-  }, [initialMode])
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -31,59 +24,22 @@ function AuthModal({ initialMode = 'login', onClose, onSuccess }) {
     }
   }
 
-  async function handleRegister(e) {
-    e.preventDefault()
-    setError(null)
-    setLoading(true)
-    try {
-      const user = await registerLocal(registerForm)
-      onSuccess(user)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <div className="modal-overlay">
       <div className="modal auth-modal">
-        <div className="auth-switch">
-          <button className={mode === 'login' ? 'nav-btn active' : 'nav-btn'} onClick={() => setMode('login')} type="button">Connexion</button>
-          <button className={mode === 'register' ? 'nav-btn active' : 'nav-btn'} onClick={() => setMode('register')} type="button">Inscription</button>
-        </div>
-
-        {mode === 'login' ? (
-          <form onSubmit={handleLogin}>
-            <h2>Connexion locale</h2>
-            <p className="modal-info">Connecte-toi avec ton email et ton mot de passe.</p>
-            <label htmlFor="login-email">Email</label>
-            <input id="login-email" type="email" value={loginForm.email} onChange={(e) => setLoginForm((prev) => ({ ...prev, email: e.target.value }))} required />
-            <label htmlFor="login-password">Mot de passe</label>
-            <input id="login-password" type="password" value={loginForm.password} onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value }))} required />
-            {error && <p className="form-error">{error}</p>}
-            <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={onClose}>Fermer</button>
-              <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Connexion...' : 'Se connecter'}</button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleRegister}>
-            <h2>Creer un compte utilisateur</h2>
-            <p className="modal-info">Les comptes inscrits ici ont le role utilisateur: reservation et retour uniquement.</p>
-            <label htmlFor="register-name">Nom</label>
-            <input id="register-name" value={registerForm.user_name} onChange={(e) => setRegisterForm((prev) => ({ ...prev, user_name: e.target.value }))} required />
-            <label htmlFor="register-email">Email</label>
-            <input id="register-email" type="email" value={registerForm.user_email} onChange={(e) => setRegisterForm((prev) => ({ ...prev, user_email: e.target.value }))} required />
-            <label htmlFor="register-password">Mot de passe</label>
-            <input id="register-password" type="password" value={registerForm.password} onChange={(e) => setRegisterForm((prev) => ({ ...prev, password: e.target.value }))} required />
-            {error && <p className="form-error">{error}</p>}
-            <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={onClose}>Fermer</button>
-              <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Creation...' : 'Creer le compte'}</button>
-            </div>
-          </form>
-        )}
+        <form onSubmit={handleLogin}>
+          <h2>Connexion locale</h2>
+          <p className="modal-info">Connexion reservee aux comptes deja crees, notamment l'administration.</p>
+          <label htmlFor="login-email">Email</label>
+          <input id="login-email" type="email" value={loginForm.email} onChange={(e) => setLoginForm((prev) => ({ ...prev, email: e.target.value }))} required />
+          <label htmlFor="login-password">Mot de passe</label>
+          <input id="login-password" type="password" value={loginForm.password} onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value }))} required />
+          {error && <p className="form-error">{error}</p>}
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>Fermer</button>
+            <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Connexion...' : 'Se connecter'}</button>
+          </div>
+        </form>
       </div>
     </div>
   )
@@ -143,7 +99,7 @@ export default function App() {
             {currentUser ? (
               <button className="nav-btn" onClick={handleLogout}>Se deconnecter</button>
             ) : (
-              <button className="nav-btn" onClick={() => setAuthModalMode('login')}>Se connecter</button>
+              <button className="nav-btn" onClick={() => setAuthModalMode('login')}>Connexion admin</button>
             )}
           </div>
         </div>
@@ -153,7 +109,7 @@ export default function App() {
         {page === 'admin' && currentUser?.is_admin && <AdminPage mode="manage" />}
         {page === 'returns' && currentUser?.is_admin && <AdminPage mode="returns" />}
       </main>
-      {authModalMode && <AuthModal initialMode={authModalMode} onClose={() => setAuthModalMode(null)} onSuccess={handleAuthSuccess} />}
+      {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} onSuccess={handleAuthSuccess} />}
     </div>
   )
 }
