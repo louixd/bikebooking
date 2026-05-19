@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+  <title id="title">Velo col de cygne</title>
+  <desc id="desc">Dessin au trait d'un velo avec cadre bas ouvert, porte-bagages et garde-boue.</desc>
+  <rect width="640" height="360" fill="#fff"/>
+  <g fill="none" stroke="#111" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="170" cy="250" r="94" stroke-width="8"/>
+    <circle cx="470" cy="250" r="94" stroke-width="8"/>
+    <circle cx="170" cy="250" r="10" stroke-width="6"/>
+    <circle cx="470" cy="250" r="10" stroke-width="6"/>
+    <g stroke-width="2.6" opacity="0.9">
+      <path d="M170 156v188M76 250h188M103 183l134 134M237 183 103 317"/>
+      <path d="M470 156v188M376 250h188M403 183l134 134M537 183 403 317"/>
+      <path d="M170 156 76 250 170 344 264 250zM470 156 376 250 470 344 564 250z"/>
+    </g>
+    <path d="M80 236c19-66 66-101 132-91" stroke-width="8"/>
+    <path d="M376 236c20-66 68-101 134-91" stroke-width="8"/>
+    <path d="M88 224c20-47 61-70 116-66" stroke-width="5"/>
+    <path d="M386 224c20-47 61-70 116-66" stroke-width="5"/>
+    <path d="M95 142h120l52 41" stroke-width="8"/>
+    <path d="M105 154h103" stroke-width="5"/>
+    <path d="M95 142l75 108" stroke-width="8"/>
+    <path d="M215 142 255 250" stroke-width="8"/>
+    <path d="M252 250h104" stroke-width="14"/>
+    <path d="M168 250 270 122" stroke-width="8"/>
+    <path d="M270 122 320 250" stroke-width="8"/>
+    <path d="M320 250c40-75 86-91 117-167" stroke-width="9"/>
+    <path d="M270 122c28 75 54 121 86 128" stroke-width="7"/>
+    <path d="M356 250 437 83" stroke-width="8"/>
+    <path d="M437 83 470 250" stroke-width="8"/>
+    <path d="M430 78c6-42 31-54 50-34 20 21 6 43-11 58" stroke-width="8"/>
+    <path d="M457 38h43" stroke-width="8"/>
+    <path d="M269 121l-16-58" stroke-width="8"/>
+    <path d="M217 61c34-13 71-10 99 5-21 20-64 27-103 9z" stroke-width="7"/>
+    <path d="M350 250m-28 0a28 28 0 1 0 56 0 28 28 0 1 0-56 0" stroke-width="8"/>
+    <path d="M350 250h62" stroke-width="7"/>
+    <path d="M412 250h25" stroke-width="8"/>
+    <path d="M470 125c20-5 39 0 52 13-14 10-34 12-55 5" stroke-width="6"/>
+    <path d="M74 238c-18 9-30 27-34 52" stroke-width="7"/>
+  </g>
+</svg>

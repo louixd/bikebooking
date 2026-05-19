@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createReturnWithPhotos } from '../api/bikeflowApi.js'
 
 const PROBLEMS = [
@@ -15,7 +15,15 @@ export default function ReturnForm({ reservation, bike, onClose, onSuccess }) {
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') onClose()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   function toggleProblem(v) {
     setProblems((p) => (p.includes(v) ? p.filter((x) => x !== v) : [...p, v]))
@@ -40,8 +48,8 @@ export default function ReturnForm({ reservation, bike, onClose, onSuccess }) {
         mileage,
         photos,
       })
-      setSuccess(true)
       await Promise.resolve(onSuccess?.())
+      onClose()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -49,35 +57,25 @@ export default function ReturnForm({ reservation, bike, onClose, onSuccess }) {
     }
   }
 
-  if (success) {
-    return (
-      <div className="modal-overlay">
-        <div className="modal">
-          <h2>Merci !</h2>
-          <p className="modal-info">
-            Votre retour d'état a bien été transmis à l'équipe de maintenance.
-          </p>
-          <div className="modal-actions">
-            <button className="btn-primary" onClick={onClose}>Fermer</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="modal-overlay">
-      <div className="modal" style={{ maxWidth: 520 }}>
-        <h2>Retour d'état</h2>
-        <p className="modal-info">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal return-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-header-row return-modal-header">
+          <div>
+            <p className="return-kicker">Contrôle retour</p>
+            <h2>Retour d'état</h2>
+          </div>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Fermer le retour">×</button>
+        </div>
+        <div className="return-summary">
           <strong>{bike?.bike_name || `Velo #${reservation.bike_id}`}</strong>
-          {' '}— Réservation <code>{reservation.reservation_code}</code>
-        </p>
+          <span>Réservation {reservation.reservation_code}</span>
+        </div>
         <form onSubmit={handleSubmit}>
           <label>Problèmes constatés</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', marginBottom: '0.5rem' }}>
+          <div className="return-problem-grid">
             {PROBLEMS.map((p) => (
-              <label key={p.value} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 400, margin: 0 }}>
+              <label key={p.value} className={problems.includes(p.value) ? 'return-problem active' : 'return-problem'}>
                 <input
                   type="checkbox"
                   checked={problems.includes(p.value)}
@@ -105,7 +103,6 @@ export default function ReturnForm({ reservation, bike, onClose, onSuccess }) {
             placeholder="Détaillez le problème ou laissez vide si tout va bien"
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #ccc', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.95rem' }}
           />
 
           <label htmlFor="ret-photos">Photos (optionnel, max 5)</label>
@@ -117,7 +114,7 @@ export default function ReturnForm({ reservation, bike, onClose, onSuccess }) {
             onChange={handleFiles}
           />
           {photos.length > 0 && (
-            <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>
+            <p className="return-file-count">
               {photos.length} photo(s) sélectionnée(s)
             </p>
           )}

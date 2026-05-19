@@ -67,6 +67,7 @@ def ensure_auth_schema(app):
         cursor = conn.cursor()
         cursor.execute("IF COL_LENGTH('dbo.[User]', 'PasswordHash') IS NULL ALTER TABLE dbo.[User] ADD PasswordHash NVARCHAR(255) NULL;")
         cursor.execute("IF COL_LENGTH('dbo.[User]', 'RoleName') IS NULL ALTER TABLE dbo.[User] ADD RoleName NVARCHAR(50) NULL;")
+        cursor.execute("IF COL_LENGTH('dbo.Reservation', 'GuestOwnerToken') IS NULL ALTER TABLE dbo.Reservation ADD GuestOwnerToken NVARCHAR(80) NULL;")
         cursor.execute("UPDATE dbo.[User] SET RoleName = CASE WHEN IsAdmin = 1 THEN 'admin' ELSE 'user' END WHERE RoleName IS NULL;")
 
         admin_name = app.config.get('LOCAL_ADMIN_NAME', 'Jeremy')

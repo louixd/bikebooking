@@ -89,9 +89,9 @@ export default function App() {
           <p className="app-subtitle">Flotte velo entreprise, version locale</p>
         </div>
         <nav>
-          <button className={page === 'home' ? 'nav-btn active' : 'nav-btn'} onClick={() => setPage('home')}>Reservations</button>
+          {currentUser?.is_admin && <button className={page === 'home' ? 'nav-btn active' : 'nav-btn'} onClick={() => setPage('home')}>Reservations</button>}
           {currentUser?.is_admin && <button className={page === 'admin' ? 'nav-btn active' : 'nav-btn'} onClick={() => setPage('admin')}>Administration</button>}
-          {currentUser?.is_admin && <button className={page === 'returns' ? 'nav-btn active' : 'nav-btn'} onClick={() => setPage('returns')}>Retours</button>}
+          {currentUser?.is_admin && <button className={page === 'returns' ? 'nav-btn active' : 'nav-btn'} onClick={() => setPage('returns')}>Historique retours</button>}
         </nav>
         <div className="header-actions">
           <div className="local-auth-chip">

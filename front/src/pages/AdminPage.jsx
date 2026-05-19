@@ -1,5 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
-import { fetchBikes, fetchReparations, createReparation, closeReparation, fetchReservations, createReturn, createBike, fetchReturns, fetchUsers, cancelReservation } from '../api/bikeflowApi.js'
+import { fetchBikes, fetchReparations, createReparation, closeReparation, fetchReservations, createBike, updateBike, fetchReturns, fetchUsers, cancelReservation } from '../api/bikeflowApi.js'
+
+const BIKE_SIZES = ['XS', 'S', 'M', 'L', 'XL']
 
 export default function AdminPage({ mode = 'manage' }) {
   const [bikes, setBikes] = useState([])
@@ -7,16 +9,17 @@ export default function AdminPage({ mode = 'manage' }) {
   const [reservations, setReservations] = useState([])
   const [returnsHistory, setReturnsHistory] = useState([])
   const [users, setUsers] = useState([])
-  const [bikeForm, setBikeForm] = useState({ bike_name: '', bike_code: '', bike_size: '', bike_description: '' })
+  const [bikeForm, setBikeForm] = useState({ bike_name: '', bike_code: '', bike_size: '', bike_description: '', bike_quantity: 1 })
+  const [editingBikeId, setEditingBikeId] = useState(null)
+  const [editBikeForm, setEditBikeForm] = useState({ bike_name: '', bike_code: '', bike_size: '', bike_description: '', is_available: true })
   const [repForm, setRepForm] = useState({ bike_id: '', reparation_description: '' })
-  const [returnForm, setReturnForm] = useState({ reservation_id: '', bike_id: '', return_state: '', problem_state: '', return_comment: '' })
   const [closeForm, setCloseForm] = useState({})
-  const [msg, setMsg] = useState(null)
   const [error, setError] = useState(null)
 
   function notify(text, isError = false) {
-    isError ? setError(text) : setMsg(text)
-    setTimeout(() => isError ? setError(null) : setMsg(null), 4000)
+    if (!isError) return
+    setError(text)
+    setTimeout(() => setError(null), 4000)
   }
 
   async function load() {
@@ -33,9 +36,34 @@ export default function AdminPage({ mode = 'manage' }) {
   async function handleCreateBike(e) {
     e.preventDefault()
     try {
-      await createBike(bikeForm)
-      setBikeForm({ bike_name: '', bike_code: '', bike_size: '', bike_description: '' })
-      notify('Vélo ajouté avec succès.')
+      await createBike({ ...bikeForm, bike_quantity: Number(bikeForm.bike_quantity) || 1 })
+      setBikeForm({ bike_name: '', bike_code: '', bike_size: '', bike_description: '', bike_quantity: 1 })
+      load()
+    } catch (err) { notify(err.message, true) }
+  }
+
+  function startEditBike(bike) {
+    setEditingBikeId(bike.bike_id)
+    setEditBikeForm({
+      bike_name: bike.bike_name || '',
+      bike_code: bike.bike_code || '',
+      bike_size: bike.bike_size || '',
+      bike_description: bike.bike_description || '',
+      is_available: !!bike.is_available,
+    })
+  }
+
+  function cancelEditBike() {
+    setEditingBikeId(null)
+    setEditBikeForm({ bike_name: '', bike_code: '', bike_size: '', bike_description: '', is_available: true })
+  }
+
+  async function handleUpdateBike(e) {
+    e.preventDefault()
+    if (!editingBikeId) return
+    try {
+      await updateBike(editingBikeId, editBikeForm)
+      cancelEditBike()
       load()
     } catch (err) { notify(err.message, true) }
   }
@@ -45,7 +73,6 @@ export default function AdminPage({ mode = 'manage' }) {
     try {
       await createReparation({ bike_id: parseInt(repForm.bike_id), reparation_description: repForm.reparation_description })
       setRepForm({ bike_id: '', reparation_description: '' })
-      notify('Réparation créée.')
       load()
     } catch (err) { notify(err.message, true) }
   }
@@ -55,31 +82,13 @@ export default function AdminPage({ mode = 'manage' }) {
     if (!d.end_date) { notify('Date de fin requise.', true); return }
     try {
       await closeReparation(id, { reparation_end_date: d.end_date, reparation_cost: d.cost ? parseFloat(d.cost) : null })
-      notify('Réparation clôturée.')
-      load()
-    } catch (err) { notify(err.message, true) }
-  }
-
-  async function handleCreateReturn(e) {
-    e.preventDefault()
-    try {
-      await createReturn({
-        reservation_id: parseInt(returnForm.reservation_id),
-        bike_id: parseInt(returnForm.bike_id),
-        return_state: returnForm.return_state,
-        problem_state: returnForm.problem_state,
-        return_comment: returnForm.return_comment,
-      })
-      setReturnForm({ reservation_id: '', bike_id: '', return_state: '', problem_state: '', return_comment: '' })
-      notify('Retour enregistré.')
       load()
     } catch (err) { notify(err.message, true) }
   }
 
   async function handleDeleteReservation(id) {
     try {
-      await cancelReservation(id)
-      notify('Réservation supprimée.')
+      await cancelReservation(id, { admin: true, guestOwnerToken: false })
       load()
     } catch (err) { notify(err.message, true) }
   }
@@ -93,6 +102,14 @@ export default function AdminPage({ mode = 'manage' }) {
     return bike ? `${bike.bike_name} (${bike.bike_code})` : `Vélo ${bikeId}`
   }
 
+  const quantityByFrame = useMemo(() => {
+    return bikes.reduce((acc, bike) => {
+      const label = bike.bike_description?.toLowerCase().includes('cygne') ? 'Col de cygne' : 'Trapèze'
+      acc[label] = (acc[label] || 0) + 1
+      return acc
+    }, {})
+  }, [bikes])
+
   const openReparations = reparations.filter((r) => !r.reparation_end_date)
   const dashboard = useMemo(() => {
     const reservationsByPerson = new Map()
@@ -105,12 +122,12 @@ export default function AdminPage({ mode = 'manage' }) {
       .slice(0, 5)
 
     return {
+      totalBikes: bikes.length,
       totalReservations: reservations.length,
-      totalReturns: returnsHistory.length,
       totalUsers: users.length,
       topPeople,
     }
-  }, [reservations, returnsHistory, users])
+  }, [bikes.length, reservations, users])
 
   if (mode === 'returns') {
     const flaggedReturns = returnsHistory.filter((item) => item.return_state === 'ko' || (item.problem_state && item.problem_state !== 'Aucun'))
@@ -134,7 +151,6 @@ export default function AdminPage({ mode = 'manage' }) {
           </div>
         </section>
 
-        {msg && <div className="alert-success">{msg}</div>}
         {error && <div className="alert-error">{error}</div>}
 
         <section className="section returns-table-section">
@@ -173,21 +189,20 @@ export default function AdminPage({ mode = 'manage' }) {
     <div className="page">
       <h1>Administration</h1>
 
-      {msg && <div className="alert-success">{msg}</div>}
       {error && <div className="alert-error">{error}</div>}
 
       <section className="section">
         <h2>Dashboard</h2>
         <div className="dashboard-grid">
           <div className="dashboard-card">
+            <span className="dashboard-label">Vélos</span>
+            <strong>{dashboard.totalBikes}</strong>
+            <p>Quantité totale dans la flotte.</p>
+          </div>
+          <div className="dashboard-card">
             <span className="dashboard-label">Reservations</span>
             <strong>{dashboard.totalReservations}</strong>
             <p>Total des réservations actives.</p>
-          </div>
-          <div className="dashboard-card">
-            <span className="dashboard-label">Retours</span>
-            <strong>{dashboard.totalReturns}</strong>
-            <p>Retours déjà saisis par l'équipe.</p>
           </div>
           <div className="dashboard-card">
             <span className="dashboard-label">Reparations</span>
@@ -199,6 +214,11 @@ export default function AdminPage({ mode = 'manage' }) {
             <strong>{dashboard.totalUsers}</strong>
             <p>Comptes recensés en base locale.</p>
           </div>
+        </div>
+        <div className="quantity-summary">
+          {Object.entries(quantityByFrame).map(([label, count]) => (
+            <span key={label}>{label}: <strong>{count}</strong></span>
+          ))}
         </div>
         <div className="dashboard-split">
           <div className="dashboard-panel">
@@ -289,6 +309,82 @@ export default function AdminPage({ mode = 'manage' }) {
       </section>
 
       <section className="section">
+        <h2>Modifier les vélos</h2>
+        {bikes.length === 0 ? (
+          <p className="empty-list">Aucun vélo enregistré.</p>
+        ) : (
+          <div className="admin-bike-manager">
+            <table className="reservation-table admin-bike-table">
+              <thead>
+                <tr><th>Nom</th><th>Code</th><th>Taille</th><th>Type</th><th>Statut</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                {bikes.map((bike) => (
+                  <tr key={bike.bike_id} className={editingBikeId === bike.bike_id ? 'admin-bike-row-active' : ''}>
+                    <td>{bike.bike_name}</td>
+                    <td><code>{bike.bike_code}</code></td>
+                    <td>{bike.bike_size}</td>
+                    <td>{bike.bike_description || '-'}</td>
+                    <td>
+                      <span className={`return-state-pill ${bike.is_available ? 'ok' : 'danger'}`}>
+                        {bike.is_available ? 'Disponible' : 'Indisponible'}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="btn-secondary" onClick={() => startEditBike(bike)}>Modifier</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {editingBikeId && (
+              <form className="admin-form admin-edit-bike-form" onSubmit={handleUpdateBike}>
+                <h3>Modifier {editBikeForm.bike_name}</h3>
+                <input
+                  placeholder="Nom du vélo *"
+                  value={editBikeForm.bike_name}
+                  onChange={(e) => setEditBikeForm((p) => ({ ...p, bike_name: e.target.value }))}
+                  required
+                />
+                <input
+                  placeholder="Code unique *"
+                  value={editBikeForm.bike_code}
+                  onChange={(e) => setEditBikeForm((p) => ({ ...p, bike_code: e.target.value }))}
+                  required
+                />
+                <select
+                  value={editBikeForm.bike_size}
+                  onChange={(e) => setEditBikeForm((p) => ({ ...p, bike_size: e.target.value }))}
+                  required
+                >
+                  <option value="">-- Taille du cadre --</option>
+                  {BIKE_SIZES.map((size) => <option key={size} value={size}>{size}</option>)}
+                </select>
+                <textarea
+                  placeholder="Description / type de cadre"
+                  value={editBikeForm.bike_description}
+                  onChange={(e) => setEditBikeForm((p) => ({ ...p, bike_description: e.target.value }))}
+                />
+                <label className="admin-checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={editBikeForm.is_available}
+                    onChange={(e) => setEditBikeForm((p) => ({ ...p, is_available: e.target.checked }))}
+                  />
+                  Disponible à la réservation
+                </label>
+                <div className="admin-form-actions">
+                  <button type="button" className="btn-secondary" onClick={cancelEditBike}>Annuler</button>
+                  <button type="submit" className="btn-primary">Enregistrer</button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className="section">
         <h2>Ajouter un vélo</h2>
         <form className="admin-form" onSubmit={handleCreateBike}>
           <input
@@ -298,9 +394,18 @@ export default function AdminPage({ mode = 'manage' }) {
             required
           />
           <input
-            placeholder="Code unique (ex: VL-042) *"
+            placeholder="Code de base (ex: VL-042) *"
             value={bikeForm.bike_code}
             onChange={(e) => setBikeForm((p) => ({ ...p, bike_code: e.target.value }))}
+            required
+          />
+          <input
+            type="number"
+            min="1"
+            max="50"
+            placeholder="Quantité *"
+            value={bikeForm.bike_quantity}
+            onChange={(e) => setBikeForm((p) => ({ ...p, bike_quantity: e.target.value }))}
             required
           />
           <select
@@ -309,7 +414,7 @@ export default function AdminPage({ mode = 'manage' }) {
             required
           >
             <option value="">-- Taille du cadre --</option>
-            {['XS (< 155 cm)', 'S (155–165 cm)', 'M (165–175 cm)', 'L (175–185 cm)', 'XL (> 185 cm)'].map((label) => (
+            {['XS (< 155 cm)', 'S (155-165 cm)', 'M (165-175 cm)', 'L (175-185 cm)', 'XL (> 185 cm)'].map((label) => (
               <option key={label} value={label.split(' ')[0]}>{label}</option>
             ))}
           </select>
@@ -320,6 +425,7 @@ export default function AdminPage({ mode = 'manage' }) {
           />
           <button type="submit" className="btn-primary">Ajouter le vélo</button>
         </form>
+        <p className="admin-form-hint">Si la quantité est supérieure à 1, les codes seront créés automatiquement avec un suffixe: VL-042-01, VL-042-02...</p>
       </section>
 
       <section className="section">
@@ -335,37 +441,6 @@ export default function AdminPage({ mode = 'manage' }) {
         </form>
       </section>
 
-      <section className="section">
-        <h2>Enregistrer un retour</h2>
-        <form className="admin-form" onSubmit={handleCreateReturn}>
-          <select value={returnForm.reservation_id} onChange={(e) => setReturnForm((p) => ({ ...p, reservation_id: e.target.value }))} required>
-            <option value="">-- Sélectionner une réservation --</option>
-            {reservations.map((r) => {
-              const bike = bikes.find((b) => b.bike_id === r.bike_id)
-              return <option key={r.reservation_id} value={r.reservation_id}>{r.reservation_code} — {bike?.bike_name} ({r.reservation_date?.slice(0,10)})</option>
-            })}
-          </select>
-          <select value={returnForm.bike_id} onChange={(e) => setReturnForm((p) => ({ ...p, bike_id: e.target.value }))} required>
-            <option value="">-- Vélo retourné --</option>
-            {bikes.map((b) => <option key={b.bike_id} value={b.bike_id}>{b.bike_name}</option>)}
-          </select>
-          <select value={returnForm.return_state} onChange={(e) => setReturnForm((p) => ({ ...p, return_state: e.target.value }))}>
-            <option value="">État du retour</option>
-            <option value="Bon état">Bon état</option>
-            <option value="Endommagé">Endommagé</option>
-          </select>
-          <select value={returnForm.problem_state} onChange={(e) => setReturnForm((p) => ({ ...p, problem_state: e.target.value }))}>
-            <option value="">Problème signalé</option>
-            <option value="Aucun">Aucun</option>
-            <option value="Crevaison">Crevaison</option>
-            <option value="Frein défectueux">Frein défectueux</option>
-            <option value="Autre">Autre</option>
-          </select>
-          <textarea placeholder="Commentaire (optionnel)" value={returnForm.return_comment}
-            onChange={(e) => setReturnForm((p) => ({ ...p, return_comment: e.target.value }))} />
-          <button type="submit" className="btn-primary">Enregistrer le retour</button>
-        </form>
-      </section>
     </div>
   )
 }

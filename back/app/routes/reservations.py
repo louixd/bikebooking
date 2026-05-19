@@ -7,6 +7,10 @@ from ..email import send_email, get_reservation_notify_email
 reservations_bp = Blueprint('reservations', __name__, url_prefix='/reservations')
 
 
+def _get_guest_owner_token():
+    return (request.headers.get('X-Bikeflow-Guest-Token') or '').strip()[:80] or None
+
+
 def _row_to_dict(row):
     return {
         'reservation_id': row.ReservationId,
@@ -29,7 +33,7 @@ def get_reservations():
     user_id = request.args.get('user_id')
 
     query = """
-        SELECT ReservationId, ReservationCode, ReservationDate, ReturnDate, IsValidate, UserId, UserNameFree, BikeId
+        SELECT ReservationId, ReservationCode, ReservationDate, ReturnDate, IsValidate, UserId, UserNameFree, BikeId, GuestOwnerToken
         FROM dbo.Reservation
         WHERE IsValidate = 1
     """
@@ -55,7 +59,7 @@ def get_reservation(reservation_id):
     """Retourne le détail d'une réservation ou 404."""
     cursor = get_db().cursor()
     cursor.execute(
-        "SELECT ReservationId, ReservationCode, ReservationDate, ReturnDate, IsValidate, UserId, UserNameFree, BikeId FROM dbo.Reservation WHERE ReservationId = ?",
+        "SELECT ReservationId, ReservationCode, ReservationDate, ReturnDate, IsValidate, UserId, UserNameFree, BikeId, GuestOwnerToken FROM dbo.Reservation WHERE ReservationId = ?",
         reservation_id
     )
     row = cursor.fetchone()
@@ -74,8 +78,11 @@ def create_reservation():
         abort(400, description=f"Champs requis : {required}")
     user_id = data.get('user_id')
     user_name_free = data.get('user_name_free', '').strip() if data.get('user_name_free') else None
+    guest_owner_token = None if user_id else _get_guest_owner_token()
     if not user_id and not user_name_free:
         abort(400, description="Fournis soit un user_id (utilisateur DB) soit un user_name_free (saisie libre).")
+    if not user_id and not guest_owner_token:
+        abort(400, description="Cookie d'identification invité manquant.")
 
     conn = get_db()
     cursor = conn.cursor()
@@ -101,15 +108,15 @@ def create_reservation():
     code = f"RES-{str(uuid.uuid4())[:8].upper()}"
 
     cursor.execute("""
-        INSERT INTO dbo.Reservation (ReservationCode, ReservationDate, ReturnDate, IsValidate, UserId, UserNameFree, BikeId)
+        INSERT INTO dbo.Reservation (ReservationCode, ReservationDate, ReturnDate, IsValidate, UserId, UserNameFree, BikeId, GuestOwnerToken)
         OUTPUT INSERTED.ReservationId
-        VALUES (?, ?, ?, 1, ?, ?, ?)
-    """, code, data['reservation_date'], data['return_date'], user_id, user_name_free, data['bike_id'])
+        VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+    """, code, data['reservation_date'], data['return_date'], user_id, user_name_free, data['bike_id'], guest_owner_token)
     new_id = cursor.fetchone()[0]
     conn.commit()
 
     cursor.execute(
-        "SELECT ReservationId, ReservationCode, ReservationDate, ReturnDate, IsValidate, UserId, UserNameFree, BikeId FROM dbo.Reservation WHERE ReservationId = ?",
+        "SELECT ReservationId, ReservationCode, ReservationDate, ReturnDate, IsValidate, UserId, UserNameFree, BikeId, GuestOwnerToken FROM dbo.Reservation WHERE ReservationId = ?",
         new_id
     )
     reservation_row = cursor.fetchone()
@@ -154,9 +161,16 @@ def cancel_reservation(reservation_id):
     """Annule une réservation (soft delete : IsValidate = 0)."""
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT ReservationId FROM dbo.Reservation WHERE ReservationId = ?", reservation_id)
-    if not cursor.fetchone():
+    cursor.execute("SELECT ReservationId, UserId, GuestOwnerToken FROM dbo.Reservation WHERE ReservationId = ?", reservation_id)
+    row = cursor.fetchone()
+    if not row:
         abort(404, description="Réservation introuvable.")
+
+    is_admin_override = request.headers.get('X-Bikeflow-Admin') == 'true'
+    if not row.UserId and row.GuestOwnerToken and not is_admin_override:
+                if _get_guest_owner_token() != row.GuestOwnerToken:
+                        abort(403, description="Cette réservation appartient à un autre navigateur.")
+
     cursor.execute("UPDATE dbo.Reservation SET IsValidate = 0 WHERE ReservationId = ?", reservation_id)
     conn.commit()
     return jsonify({'message': 'Réservation annulée.', 'reservation_id': reservation_id})

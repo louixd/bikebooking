@@ -17,7 +17,17 @@ def make_reservation_row():
     row.ReturnDate = datetime(2026, 5, 19, 14, 0)
     row.IsValidate = True
     row.UserId = 1
+    row.UserNameFree = None
     row.BikeId = 1
+    row.GuestOwnerToken = None
+    return row
+
+
+def make_cancel_row(user_id=1, guest_owner_token=None):
+    row = MagicMock()
+    row.ReservationId = 1
+    row.UserId = user_id
+    row.GuestOwnerToken = guest_owner_token
     return row
 
 
@@ -80,8 +90,28 @@ def test_create_reservation_slot_conflict(client):
 def test_cancel_reservation(client):
     with patch('app.routes.reservations.get_db') as mock_get_db:
         mock_cursor = MagicMock()
-        mock_cursor.fetchone.return_value = MagicMock()  # réservation existe
+        mock_cursor.fetchone.return_value = make_cancel_row()  # réservation compte utilisateur
         mock_get_db.return_value.cursor.return_value = mock_cursor
 
         resp = client.patch('/reservations/1/cancel')
         assert resp.status_code == 200
+
+
+def test_cancel_guest_reservation_with_owner_cookie(client):
+    with patch('app.routes.reservations.get_db') as mock_get_db:
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = make_cancel_row(user_id=None, guest_owner_token='owner-123')
+        mock_get_db.return_value.cursor.return_value = mock_cursor
+
+        resp = client.patch('/reservations/1/cancel', headers={'X-Bikeflow-Guest-Token': 'owner-123'})
+        assert resp.status_code == 200
+
+
+def test_cancel_guest_reservation_rejects_wrong_cookie(client):
+    with patch('app.routes.reservations.get_db') as mock_get_db:
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = make_cancel_row(user_id=None, guest_owner_token='owner-123')
+        mock_get_db.return_value.cursor.return_value = mock_cursor
+
+        resp = client.patch('/reservations/1/cancel', headers={'X-Bikeflow-Guest-Token': 'other-browser'})
+        assert resp.status_code == 403

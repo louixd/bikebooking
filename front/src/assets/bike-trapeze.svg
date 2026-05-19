@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+  <title id="title">Velo cadre trapeze</title>
+  <desc id="desc">Dessin au trait d'un velo avec tube superieur incline formant un cadre trapeze.</desc>
+  <rect width="640" height="360" fill="#fff"/>
+  <g fill="none" stroke="#111" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="166" cy="252" r="92" stroke-width="6"/>
+    <circle cx="470" cy="252" r="92" stroke-width="6"/>
+    <circle cx="166" cy="252" r="10" stroke-width="5"/>
+    <circle cx="470" cy="252" r="8" stroke-width="5"/>
+    <g stroke-width="2.2" opacity="0.7">
+      <path d="M166 160v184M74 252h184M101 187l130 130M231 187 101 317"/>
+      <path d="M470 160v184M378 252h184M405 187l130 130M535 187 405 317"/>
+      <path d="M166 160 74 252 166 344 258 252zM470 160 378 252 470 344 562 252z"/>
+    </g>
+    <path d="M82 238c17-58 61-90 124-85" stroke-width="5"/>
+    <path d="M386 238c17-58 61-90 124-85" stroke-width="5"/>
+    <path d="M166 252 258 108 385 108 318 252z" stroke-width="8"/>
+    <path d="M258 108 402 156 470 252" stroke-width="8"/>
+    <path d="M318 252h84" stroke-width="8"/>
+    <path d="M385 108 470 252" stroke-width="8"/>
+    <path d="M250 107 229 62" stroke-width="7"/>
+    <path d="M204 61c31-10 67-8 95 4-11 14-48 21-93 15z" stroke-width="6"/>
+    <path d="M382 107 404 58" stroke-width="7"/>
+    <path d="M401 58c24-18 48-20 72-8" stroke-width="6"/>
+    <path d="M407 75c24-15 47-15 70 0" stroke-width="6"/>
+    <path d="M304 252m-25 0a25 25 0 1 0 50 0 25 25 0 1 0-50 0" stroke-width="6"/>
+    <path d="M304 252h-65" stroke-width="6"/>
+    <path d="M239 252l-28 22" stroke-width="5"/>
+    <path d="M221 271h-34" stroke-width="6"/>
+    <path d="M304 252l42 16" stroke-width="5"/>
+    <path d="M346 268h33" stroke-width="6"/>
+    <path d="M470 148c20-8 39-8 57 0" stroke-width="5"/>
+  </g>
+</svg>

@@ -4,8 +4,8 @@ import ReservationForm from '../components/ReservationForm.jsx'
 import ReservationList from '../components/ReservationList.jsx'
 import ReturnForm from '../components/ReturnForm.jsx'
 import { fetchBikes, fetchUsers, fetchReservations, fetchReservation, fetchReturn, createReservation, cancelReservation } from '../api/bikeflowApi.js'
+import { getGuestOwnerToken, loadGuestReservationIds, saveGuestReservationIds } from '../api/guestIdentity.js'
 
-const GUEST_RESERVATIONS_KEY = 'bikeflow-guest-reservations'
 const DEFAULT_QUICK_SLOT = { quick_slot: 'morning', start_time: '08:00', end_time: '12:00' }
 
 function buildSlotState(partial = {}) {
@@ -32,19 +32,7 @@ function getDefaultSlot() {
   return buildSlotState({ ...DEFAULT_QUICK_SLOT, start_date: today, end_date: today, date: today })
 }
 
-function loadGuestReservationIds() {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = window.sessionStorage.getItem(GUEST_RESERVATIONS_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed.filter((item) => Number.isInteger(item)) : []
-  } catch {
-    return []
-  }
-}
-
 export default function HomePage({ currentUser = null, onRequireAuth }) {
-  const canReserve = !!currentUser?.is_admin
   const [bikes, setBikes] = useState([])
   const [users, setUsers] = useState([])
   const [allReservations, setAllReservations] = useState([])
@@ -53,7 +41,6 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
   const [returnTarget, setReturnTarget] = useState(null)
   const [guestReservationIds, setGuestReservationIds] = useState(loadGuestReservationIds)
   const [pendingReturnReservations, setPendingReturnReservations] = useState([])
-  const [successMsg, setSuccessMsg] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -64,7 +51,8 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    window.sessionStorage.setItem(GUEST_RESERVATIONS_KEY, JSON.stringify(guestReservationIds))
+    getGuestOwnerToken()
+    saveGuestReservationIds(guestReservationIds)
   }, [guestReservationIds])
 
   useEffect(() => {
@@ -164,9 +152,6 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
       setGuestReservationIds((currentIds) => Array.from(new Set([...currentIds, created.reservation_id])))
     }
     setSelectedBike(null)
-    setSuccessMsg(
-      `Réservation ${created.reservation_code} confirmée. Un e-mail récapitulatif a été envoyé à l'équipe.`
-    )
     const [updatedBikes, updatedAll] = await Promise.all([fetchBikes(), fetchReservations()])
     setBikes(updatedBikes)
     setAllReservations(updatedAll)
@@ -177,7 +162,6 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
     const [updatedBikes, updatedAll] = await Promise.all([fetchBikes(), fetchReservations()])
     setBikes(updatedBikes)
     setAllReservations(updatedAll)
-    setSuccessMsg("Réservation annulée. Tu peux encore enregistrer un retour d'état ci-dessous.")
   }
 
   function handleReturn(reservation) {
@@ -209,30 +193,19 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
         <div className="hero-badge-card">
           <span className="hero-badge-label">Session</span>
           <strong>{currentUser ? currentUser.user_name : 'Invité'}</strong>
-          <p>{currentUser ? currentUser.role_name : "Connexion administrateur requise pour réserver."}</p>
+          <p>{currentUser ? currentUser.role_name : "Réservation libre, sans connexion obligatoire."}</p>
         </div>
       </section>
 
       {error && <div className="alert-error">{error} <button onClick={() => setError(null)}>Fermer</button></div>}
-      {successMsg && (
-        <div className="alert-success" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>{successMsg}</span>
-          <button onClick={() => setSuccessMsg(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem' }}>Fermer</button>
-        </div>
-      )}
 
       <section className="section">
         <h2>Vélos disponibles</h2>
         <div className="bike-grid">
           {bikesWithStatus.map((b) => (
-            <BikeCard key={b.bike_id} bike={b} onReserve={handleReserve} canReserve={canReserve} />
+            <BikeCard key={b.bike_id} bike={b} onReserve={handleReserve} />
           ))}
         </div>
-        {!canReserve && (
-          <p className="reservation-admin-note">
-            Le bouton de réservation est visible uniquement pour l'administration.
-          </p>
-        )}
       </section>
 
       {slot.start_date && (
