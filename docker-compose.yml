@@ -1,0 +1,22 @@
+services:
+  back:
+    build: ./back
+    ports:
+      - "5000:5000"
+    env_file: ./back/.env
+    networks:
+      - bikeflow-network
+
+  front:
+    build: ./front
+    ports:
+      - "5173:5173"
+    env_file: ./front/.env
+    depends_on:
+      - back
+    networks:
+      - bikeflow-network
+
+networks:
+  bikeflow-network:
+    driver: bridge
