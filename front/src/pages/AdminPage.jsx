@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { fetchBikes, fetchReparations, createReparation, closeReparation, fetchReservations, createBike, updateBike, fetchReturns, fetchUsers, cancelReservation } from '../api/bikeflowApi.js'
+import { fetchBikes, fetchReparations, createReparation, closeReparation, fetchReservations, createBike, updateBike, deleteBike, fetchReturns, fetchUsers, cancelReservation } from '../api/bikeflowApi.js'
 
 const BIKE_SIZES = ['XS', 'S', 'M', 'L', 'XL']
 
@@ -68,6 +68,16 @@ export default function AdminPage({ mode = 'manage' }) {
     } catch (err) { notify(err.message, true) }
   }
 
+  async function handleDeleteBike(bike) {
+    const confirmed = window.confirm(`Supprimer définitivement ${bike.bike_name} (${bike.bike_code}) ?`)
+    if (!confirmed) return
+    try {
+      await deleteBike(bike.bike_id)
+      if (editingBikeId === bike.bike_id) cancelEditBike()
+      load()
+    } catch (err) { notify(err.message, true) }
+  }
+
   async function handleCreateReparation(e) {
     e.preventDefault()
     try {
@@ -100,6 +110,10 @@ export default function AdminPage({ mode = 'manage' }) {
   function getBikeLabel(bikeId) {
     const bike = bikes.find((item) => item.bike_id === bikeId)
     return bike ? `${bike.bike_name} (${bike.bike_code})` : `Vélo ${bikeId}`
+  }
+
+  function isBikeReserved(bikeId) {
+    return reservations.some((reservation) => reservation.bike_id === bikeId)
   }
 
   const quantityByFrame = useMemo(() => {
@@ -220,28 +234,20 @@ export default function AdminPage({ mode = 'manage' }) {
             <span key={label}>{label}: <strong>{count}</strong></span>
           ))}
         </div>
-        <div className="dashboard-split">
-          <div className="dashboard-panel">
-            <h3>Personnes qui réservent le plus</h3>
-            {dashboard.topPeople.length === 0 ? (
-              <p className="empty-list">Aucune réservation enregistrée.</p>
-            ) : (
-              <div className="dashboard-list">
-                {dashboard.topPeople.map(([name, count]) => (
-                  <div key={name} className="dashboard-list-item">
-                    <span>{name}</span>
-                    <strong>{count}</strong>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="dashboard-panel dashboard-panel-warning">
-            <h3>Consignes de sécurité</h3>
-            <p>Vérifier les freins, la pression des pneus et l'éclairage avant chaque départ.</p>
-            <p>Porter un casque, signaler toute chute et ne jamais laisser le vélo sans antivol.</p>
-            <p>Au retour, refermer l'antivol, ranger le vélo à sa place et déclarer tout incident dans l'outil.</p>
-          </div>
+        <div className="dashboard-panel">
+          <h3>Personnes qui réservent le plus</h3>
+          {dashboard.topPeople.length === 0 ? (
+            <p className="empty-list">Aucune réservation enregistrée.</p>
+          ) : (
+            <div className="dashboard-list">
+              {dashboard.topPeople.map(([name, count]) => (
+                <div key={name} className="dashboard-list-item">
+                  <span>{name}</span>
+                  <strong>{count}</strong>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -331,7 +337,17 @@ export default function AdminPage({ mode = 'manage' }) {
                       </span>
                     </td>
                     <td>
-                      <button className="btn-secondary" onClick={() => startEditBike(bike)}>Modifier</button>
+                      <div className="admin-bike-actions">
+                        <button className="btn-secondary" onClick={() => startEditBike(bike)}>Modifier</button>
+                        <button
+                          className="btn-cancel"
+                          onClick={() => handleDeleteBike(bike)}
+                          disabled={isBikeReserved(bike.bike_id)}
+                          title={isBikeReserved(bike.bike_id) ? 'Impossible de supprimer un vélo en cours de réservation' : 'Supprimer ce vélo'}
+                        >
+                          Supprimer
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

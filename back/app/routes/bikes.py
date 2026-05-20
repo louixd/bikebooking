@@ -152,3 +152,22 @@ def update_bike(bike_id):
         bike_id
     )
     return jsonify(_row_to_dict(cursor.fetchone()))
+
+
+@bikes_bp.delete('/<int:bike_id>')
+def delete_bike(bike_id):
+    """Supprime un vélo s'il n'est pas actuellement réservé."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT BikeId FROM dbo.Bike WHERE BikeId = ?", bike_id)
+    if not cursor.fetchone():
+        abort(404, description="Vélo introuvable.")
+
+    cursor.execute("SELECT COUNT(*) FROM dbo.Reservation WHERE BikeId = ? AND IsValidate = 1", bike_id)
+    if cursor.fetchone()[0] > 0:
+        abort(409, description="Impossible de supprimer ce vélo : il est en cours de réservation.")
+
+    cursor.execute("DELETE FROM dbo.Bike WHERE BikeId = ?", bike_id)
+    conn.commit()
+    return jsonify({'message': 'Vélo supprimé.', 'bike_id': bike_id})

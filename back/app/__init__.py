@@ -2,12 +2,12 @@ from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
-from .db import ensure_auth_schema
+from .db import close_db, database_url_from_env, ensure_auth_schema
 
 def create_app():
     load_dotenv()
     app = Flask(__name__)
-    app.config['CONNECT_STRING'] = os.environ.get('CONNECT_STRING', '')
+    app.config['DATABASE_URL'] = database_url_from_env()
     app.config['ALLOWED_ORIGIN'] = os.environ.get('ALLOWED_ORIGIN', 'http://localhost:5173')
     app.config['ADMIN_PASSWORD'] = os.environ.get('ADMIN_PASSWORD', 'bikeflow-admin')
     app.config['LOCAL_ADMIN_NAME'] = os.environ.get('LOCAL_ADMIN_NAME', 'Jeremy')
@@ -33,5 +33,6 @@ def create_app():
     app.register_blueprint(reservations_bp)
     app.register_blueprint(returns_bp)
     app.register_blueprint(reparations_bp)
+    app.teardown_appcontext(close_db)
 
     return app

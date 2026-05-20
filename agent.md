@@ -23,22 +23,23 @@ Application de **réservation de vélos** en entreprise.
 |-----------|------------------|---------------------|--------------|
 | `front`   | Interface web     | React + Vite (JS)   | `5173`       |
 | `back`    | API REST          | Python + Flask      | `5000`       |
+| `db`      | Base de donnees   | PostgreSQL          | `5432`       |
 
 Communication entre conteneurs via le réseau Docker interne (`bikeflow-network`).
 
 ### Base de données
 
-- **Moteur :** SQL Server (Azure)
-- **Serveur :** `sqls-landinggame-dev.database.windows.net,1433`
-- **Base :** `sqldb-bikeflow-dev`
-- **Driver Python :** `pyodbc` avec le driver ODBC 18 for SQL Server
-- La chaîne de connexion est injectée via variable d'environnement (`DATABASE_URL`) dans un fichier `.env` (jamais commité).
+- **Moteur :** PostgreSQL dans Docker
+- **Service Docker :** `db`
+- **Base :** `bikeflow`
+- **Driver Python :** `psycopg2`
+- La chaîne de connexion est injectée via variable d'environnement (`DATABASE_URL`).
 
 ---
 
-## 3. Modèle de données (SQL Server) — Structure réelle
+## 3. Modèle de données (PostgreSQL)
 
-> Structure découverte par introspection directe sur `sqldb-bikeflow-dev`. Ces définitions font foi.
+> Le schema est initialise automatiquement dans `back/app/db.py` au demarrage du backend.
 
 ### Table `dbo.Bike`
 
@@ -133,7 +134,7 @@ back/
 ├── app/
 │   ├── __init__.py          # Factory Flask (create_app)
 │   ├── config.py            # Config depuis variables d'env
-│   ├── db.py                # Connexion pyodbc
+│   ├── db.py                # Connexion PostgreSQL
 │   ├── routes/
 │   │   ├── bikes.py         # GET /bikes, GET /bikes/:id
 │   │   ├── users.py         # GET /users, POST /users
@@ -151,14 +152,14 @@ back/
 - **Style :** PEP 8 strict. Docstrings sur toutes les fonctions publiques.
 - **Réponses JSON :** snake_case pour toutes les clés.
 - **Gestion d'erreurs :** `abort()` Flask avec codes HTTP sémantiques (400, 404, 409 pour conflit de réservation).
-- **Pas d'ORM :** Requêtes SQL directes via `pyodbc` pour garder la simplicité du projet demo.
+- **Pas d'ORM :** Requêtes SQL directes via `psycopg2` pour garder la simplicité du projet demo.
 - **CORS :** Activé pour `http://localhost:5173` via `flask-cors`.
 - **Tests :** `pytest` avec `pytest-flask`. Chaque route doit avoir au minimum un test de succès et un test d'erreur.
 
 ### Variables d'environnement (`.env`)
 
 ```
-DATABASE_URL=mssql+pyodbc://...  # ou chaîne pyodbc native
+DATABASE_URL=postgresql://bikeflow:bikeflow@db:5432/bikeflow
 FLASK_ENV=development
 FLASK_DEBUG=1
 ALLOWED_ORIGIN=http://localhost:5173
@@ -253,7 +254,7 @@ networks:
 - Vérifier la disponibilité d'un vélo (`IsAvailable = 1`) et l'absence de réservation active sur le créneau avant tout `INSERT` en `Reservation`.
 - Toujours utiliser des **requêtes paramétrées** (jamais de concaténation de chaîne SQL).
 - Respecter la séparation stricte front/back : le frontend ne connaît pas la base de données.
-- Avant tout commit de migration SQL, vérifier la compatibilité avec Azure SQL Server (pas de syntaxe PostgreSQL/MySQL).
+- Avant tout commit de migration SQL, vérifier la compatibilité avec PostgreSQL.
 
 ---
 

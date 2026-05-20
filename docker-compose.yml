@@ -1,9 +1,51 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bikeflow
+      POSTGRES_USER: bikeflow
+      POSTGRES_PASSWORD: bikeflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bikeflow -d bikeflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bikeflow-network
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - bikeflow-network
+
   back:
     build: ./back
     ports:
       - "5000:5000"
-    env_file: ./back/.env
+    environment:
+      DATABASE_URL: postgresql://bikeflow:bikeflow@db:5432/bikeflow
+      ALLOWED_ORIGIN: http://localhost:5173
+      LOCAL_ADMIN_NAME: Jeremy
+      LOCAL_ADMIN_EMAIL: jeremy@bikeflow.local
+      LOCAL_ADMIN_PASSWORD: JeremyBike26!
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_USE_TLS: 0
+      SMTP_FROM: no-reply@bikeflow.local
+      RESERVATION_NOTIFY_EMAIL: test@bikeflow.local
+      MAINTENANCE_EMAIL: maintenance@bikeflow.local
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
     networks:
       - bikeflow-network
 
@@ -20,3 +62,6 @@ services:
 networks:
   bikeflow-network:
     driver: bridge
+
+volumes:
+  postgres-data:

@@ -6,10 +6,11 @@ from app import create_app
 @pytest.fixture
 def app():
     """Crée l'app Flask en mode test avec DB mockée."""
-    application = create_app()
+    with patch('app.ensure_auth_schema'):
+        application = create_app()
     application.config.update({
         'TESTING': True,
-        'CONNECT_STRING': 'mock',
+        'DATABASE_URL': 'postgresql://mock:mock@localhost/mock',
     })
     return application
 

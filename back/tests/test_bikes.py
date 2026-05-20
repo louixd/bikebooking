@@ -106,3 +106,34 @@ def test_update_bike_rejects_duplicate_code(client):
         resp = client.patch('/bikes/1', json={'bike_code': 'VL-EXISTANT'})
 
         assert resp.status_code == 409
+
+
+def test_delete_bike_success(client):
+    with patch('app.routes.bikes.get_db') as mock_get_db:
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.side_effect = [
+            MagicMock(BikeId=1),
+            (0,),
+            (0,),
+            (0,),
+        ]
+        mock_get_db.return_value.cursor.return_value = mock_cursor
+
+        resp = client.delete('/bikes/1')
+
+        assert resp.status_code == 200
+        assert resp.get_json()['bike_id'] == 1
+        assert any(call.args[0] == "DELETE FROM dbo.Bike WHERE BikeId = ?" for call in mock_cursor.execute.call_args_list)
+        mock_get_db.return_value.commit.assert_called_once()
+
+
+def test_delete_bike_rejects_active_reservation(client):
+    with patch('app.routes.bikes.get_db') as mock_get_db:
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.side_effect = [MagicMock(BikeId=1), (1,)]
+        mock_get_db.return_value.cursor.return_value = mock_cursor
+
+        resp = client.delete('/bikes/1')
+
+        assert resp.status_code == 409
+        mock_get_db.return_value.commit.assert_not_called()

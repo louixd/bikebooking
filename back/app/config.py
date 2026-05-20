@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-CONNECT_STRING = os.environ.get('CONNECT_STRING', '')
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
 ALLOWED_ORIGIN = os.environ.get('ALLOWED_ORIGIN', 'http://localhost:5173')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'bikeflow-admin')
 LOCAL_ADMIN_NAME = os.environ.get('LOCAL_ADMIN_NAME', 'Jeremy')

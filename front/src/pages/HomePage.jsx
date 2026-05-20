@@ -3,7 +3,7 @@ import BikeCard from '../components/BikeCard.jsx'
 import ReservationForm from '../components/ReservationForm.jsx'
 import ReservationList from '../components/ReservationList.jsx'
 import ReturnForm from '../components/ReturnForm.jsx'
-import { fetchBikes, fetchUsers, fetchReservations, fetchReservation, fetchReturn, createReservation, cancelReservation } from '../api/bikeflowApi.js'
+import { fetchBikes, fetchUsers, fetchReservations, createReservation, cancelReservation } from '../api/bikeflowApi.js'
 import { getGuestOwnerToken, loadGuestReservationIds, saveGuestReservationIds } from '../api/guestIdentity.js'
 
 const DEFAULT_QUICK_SLOT = { quick_slot: 'morning', start_time: '08:00', end_time: '12:00' }
@@ -40,7 +40,6 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
   const [selectedBike, setSelectedBike] = useState(null)
   const [returnTarget, setReturnTarget] = useState(null)
   const [guestReservationIds, setGuestReservationIds] = useState(loadGuestReservationIds)
-  const [pendingReturnReservations, setPendingReturnReservations] = useState([])
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -53,40 +52,6 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
     if (typeof window === 'undefined') return
     getGuestOwnerToken()
     saveGuestReservationIds(guestReservationIds)
-  }, [guestReservationIds])
-
-  useEffect(() => {
-    let isMounted = true
-
-    async function loadPendingReservations() {
-      if (!guestReservationIds.length) {
-        if (isMounted) setPendingReturnReservations([])
-        return
-      }
-
-      const items = await Promise.all(guestReservationIds.map(async (reservationId) => {
-        try {
-          const reservation = await fetchReservation(reservationId)
-          try {
-            await fetchReturn(reservationId)
-            return null
-          } catch {
-            return reservation
-          }
-        } catch {
-          return null
-        }
-      }))
-
-      if (isMounted) {
-        setPendingReturnReservations(items.filter(Boolean))
-      }
-    }
-
-    loadPendingReservations()
-    return () => {
-      isMounted = false
-    }
   }, [guestReservationIds])
 
   useEffect(() => {
@@ -159,6 +124,7 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
 
   async function handleCancel(id) {
     await cancelReservation(id)
+    setGuestReservationIds((currentIds) => currentIds.filter((item) => item !== id))
     const [updatedBikes, updatedAll] = await Promise.all([fetchBikes(), fetchReservations()])
     setBikes(updatedBikes)
     setAllReservations(updatedAll)
@@ -173,12 +139,6 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
     : currentUser
       ? slotReservations.filter((item) => item.user_id === currentUser?.user_id)
       : slotReservations.filter((item) => guestReservationIds.includes(item.reservation_id))
-
-  const returnableReservations = useMemo(() => {
-    return pendingReturnReservations.filter(
-      (item) => !allReservations.some((activeReservation) => activeReservation.reservation_id === item.reservation_id)
-    )
-  }, [allReservations, pendingReturnReservations])
 
   return (
     <div className="page">
@@ -198,6 +158,24 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
       </section>
 
       {error && <div className="alert-error">{error} <button onClick={() => setError(null)}>Fermer</button></div>}
+
+      <section className="section user-safety-section">
+        <h2>Consignes de sécurité</h2>
+        <div className="safety-grid">
+          <div>
+            <h3>Avant le départ</h3>
+            <p>Vérifier les freins, la pression des pneus et l'éclairage.</p>
+          </div>
+          <div>
+            <h3>Pendant le trajet</h3>
+            <p>Porter un casque, signaler toute chute et ne jamais laisser le vélo sans antivol.</p>
+          </div>
+          <div>
+            <h3>Au retour</h3>
+            <p>Refermer l'antivol, ranger le vélo à sa place et déclarer tout incident dans l'outil.</p>
+          </div>
+        </div>
+      </section>
 
       <section className="section">
         <h2>Vélos disponibles</h2>
@@ -219,24 +197,6 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
             guestReservationIds={guestReservationIds}
             onCancel={handleCancel}
             onReturn={handleReturn}
-          />
-        </section>
-      )}
-
-      {returnableReservations.length > 0 && (
-        <section className="section">
-          <h2>Retours à compléter</h2>
-          <p className="modal-info" style={{ marginBottom: '1rem' }}>
-            Après une annulation, tu peux encore signaler un pneu crevé, un frein défectueux ou tout autre problème.
-          </p>
-          <ReservationList
-            reservations={returnableReservations}
-            bikes={bikes}
-            users={users}
-            currentUser={currentUser}
-            guestReservationIds={guestReservationIds}
-            onReturn={handleReturn}
-            showCancel={false}
           />
         </section>
       )}
@@ -267,7 +227,6 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
             const [updatedBikes, updatedAll] = await Promise.all([fetchBikes(), fetchReservations()])
             setBikes(updatedBikes)
             setAllReservations(updatedAll)
-            setPendingReturnReservations((currentItems) => currentItems.filter((item) => item.reservation_id !== returnTarget.reservation_id))
           }}
         />
       )}

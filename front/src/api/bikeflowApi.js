@@ -17,6 +17,7 @@ async function request(path, options = {}) {
 export const fetchBikes = () => request('/bikes')
 export const createBike = (data) => request('/bikes', { method: 'POST', body: JSON.stringify(data) })
 export const updateBike = (id, data) => request(`/bikes/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+export const deleteBike = (id) => request(`/bikes/${id}`, { method: 'DELETE' })
 export const fetchUsers = () => request('/users')
 export const createUser = (data) => request('/users', { method: 'POST', body: JSON.stringify(data) })
 export const loginLocal = (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) })
