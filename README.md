@@ -67,4 +67,4 @@ RESERVATION_NOTIFY_EMAIL=equipe@votre-domaine.fr
 MAINTENANCE_EMAIL=maintenance@votre-domaine.fr
 ```
 
-Quand `MAILJET_API_KEY` et `MAILJET_SECRET_KEY` sont presentes, le backend envoie via `in-v3.mailjet.com:587` avec TLS. En Docker local, Mailpit reste prioritaire grace a `SMTP_HOST=mailpit`.
+Quand `MAILJET_API_KEY` et `MAILJET_SECRET_KEY` sont presentes, le backend envoie via l'API Mailjet v3.1. Les noms officiels `MJ_APIKEY_PUBLIC` et `MJ_APIKEY_PRIVATE` sont aussi acceptes. En Docker local, Mailpit reste prioritaire grace a `SMTP_HOST=mailpit`.
