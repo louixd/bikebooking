@@ -106,7 +106,7 @@ def get_maintenance_email():
     return os.environ.get('MAINTENANCE_EMAIL', 'db@elcia.com')
 
 
-def send_email(to_addr, su_uses_mailjet_apibject, body, attachments=None):
+def send_email(to_addr, subject, body, attachments=None):
     """Envoie un email texte avec pièces jointes optionnelles.
 
     attachments : liste de tuples (filename, bytes, mimetype).
