@@ -4,6 +4,8 @@ Configuration via variables d'environnement :
 - SMTP_HOST, SMTP_PORT (défaut 587), SMTP_USER, SMTP_PASSWORD
 - SMTP_FROM (adresse expéditeur, défaut: SMTP_USER ou no-reply@bikeflow.local)
 - SMTP_USE_TLS (défaut "1")
+- MAILJET_API_KEY, MAILJET_SECRET_KEY pour le SMTP Mailjet en déploiement
+- MAILJET_FROM_EMAIL, MAILJET_FROM_NAME pour l'expéditeur Mailjet
 - RESERVATION_NOTIFY_EMAIL (défaut db@elcia.com)
 - MAINTENANCE_EMAIL (défaut db@elcia.com)
 
@@ -17,15 +19,31 @@ from email.message import EmailMessage
 
 logger = logging.getLogger(__name__)
 
+MAILJET_SMTP_HOST = 'in-v3.mailjet.com'
+
+
+def _mailjet_from_address():
+    email = os.environ.get('MAILJET_FROM_EMAIL')
+    name = os.environ.get('MAILJET_FROM_NAME')
+    if not email:
+        return None
+    if name:
+        return f'{name} <{email}>'
+    return email
+
 
 def _smtp_config():
+    mailjet_api_key = os.environ.get('MAILJET_API_KEY')
+    mailjet_secret_key = os.environ.get('MAILJET_SECRET_KEY')
+    use_mailjet = mailjet_api_key and mailjet_secret_key and not os.environ.get('SMTP_HOST')
+
     return {
-        'host': os.environ.get('SMTP_HOST'),
-        'port': int(os.environ.get('SMTP_PORT', '587')),
-        'user': os.environ.get('SMTP_USER'),
-        'password': os.environ.get('SMTP_PASSWORD'),
-        'from': os.environ.get('SMTP_FROM') or os.environ.get('SMTP_USER') or 'no-reply@bikeflow.local',
-        'use_tls': os.environ.get('SMTP_USE_TLS', '1') == '1',
+        'host': os.environ.get('SMTP_HOST') or (MAILJET_SMTP_HOST if use_mailjet else None),
+        'port': 587 if use_mailjet else int(os.environ.get('SMTP_PORT', '587')),
+        'user': os.environ.get('SMTP_USER') or (mailjet_api_key if use_mailjet else None),
+        'password': os.environ.get('SMTP_PASSWORD') or (mailjet_secret_key if use_mailjet else None),
+        'from': os.environ.get('SMTP_FROM') or _mailjet_from_address() or os.environ.get('SMTP_USER') or 'no-reply@bikeflow.local',
+        'use_tls': True if use_mailjet else os.environ.get('SMTP_USE_TLS', '1') == '1',
     }
 
 

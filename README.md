@@ -53,3 +53,18 @@ SMTP_USE_TLS=0
 ```
 
 Les emails captures sont visibles dans l'interface Mailpit: http://localhost:8025
+
+## Emails en deploiement Mailjet
+
+En production, le backend peut utiliser Mailjet sans configurer manuellement le SMTP. Sur Render, ajoute ces variables d'environnement au service backend:
+
+```text
+MAILJET_API_KEY=...
+MAILJET_SECRET_KEY=...
+MAILJET_FROM_EMAIL=no-reply@votre-domaine.fr
+MAILJET_FROM_NAME=BikeFlow
+RESERVATION_NOTIFY_EMAIL=equipe@votre-domaine.fr
+MAINTENANCE_EMAIL=maintenance@votre-domaine.fr
+```
+
+Quand `MAILJET_API_KEY` et `MAILJET_SECRET_KEY` sont presentes, le backend envoie via `in-v3.mailjet.com:587` avec TLS. En Docker local, Mailpit reste prioritaire grace a `SMTP_HOST=mailpit`.
