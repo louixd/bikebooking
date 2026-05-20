@@ -29,6 +29,17 @@ postgresql://bikeflow:bikeflow@db:5432/bikeflow
 
 Les donnees PostgreSQL sont conservees dans le volume Docker `postgres-data`.
 
+## CORS
+
+Le backend accepte par defaut le frontend local et le frontend Render:
+
+```text
+http://localhost:5173
+https://bikebooking-akyr.onrender.com
+```
+
+Tu peux ajouter d'autres origines avec `ALLOWED_ORIGINS`, separees par des virgules.
+
 ## Emails de test
 
 Docker Compose lance Mailpit pour intercepter les emails envoyes par le backend en environnement de test/dev.

@@ -4,10 +4,24 @@ from dotenv import load_dotenv
 import os
 from .db import close_db, database_url_from_env, ensure_auth_schema
 
+DEFAULT_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'https://bikebooking-akyr.onrender.com',
+]
+
 
 def _allowed_origins():
-    raw_origins = os.environ.get('ALLOWED_ORIGINS') or os.environ.get('ALLOWED_ORIGIN', 'http://localhost:5173')
-    return [origin.strip() for origin in raw_origins.split(',') if origin.strip()]
+    raw_origins = ','.join([
+        ','.join(DEFAULT_ALLOWED_ORIGINS),
+        os.environ.get('ALLOWED_ORIGIN', ''),
+        os.environ.get('ALLOWED_ORIGINS', ''),
+    ])
+    origins = []
+    for origin in raw_origins.split(','):
+        origin = origin.strip()
+        if origin and origin not in origins:
+            origins.append(origin)
+    return origins
 
 
 def create_app():
