@@ -4,17 +4,23 @@ from dotenv import load_dotenv
 import os
 from .db import close_db, database_url_from_env, ensure_auth_schema
 
+
+def _allowed_origins():
+    raw_origins = os.environ.get('ALLOWED_ORIGINS') or os.environ.get('ALLOWED_ORIGIN', 'http://localhost:5173')
+    return [origin.strip() for origin in raw_origins.split(',') if origin.strip()]
+
+
 def create_app():
     load_dotenv()
     app = Flask(__name__)
     app.config['DATABASE_URL'] = database_url_from_env()
-    app.config['ALLOWED_ORIGIN'] = os.environ.get('ALLOWED_ORIGIN', 'http://localhost:5173')
+    app.config['ALLOWED_ORIGINS'] = _allowed_origins()
     app.config['ADMIN_PASSWORD'] = os.environ.get('ADMIN_PASSWORD', 'bikeflow-admin')
     app.config['LOCAL_ADMIN_NAME'] = os.environ.get('LOCAL_ADMIN_NAME', 'Jeremy')
     app.config['LOCAL_ADMIN_EMAIL'] = os.environ.get('LOCAL_ADMIN_EMAIL', 'jeremy@bikeflow.local')
     app.config['LOCAL_ADMIN_PASSWORD'] = os.environ.get('LOCAL_ADMIN_PASSWORD', 'JeremyBike26!')
 
-    CORS(app, origins=[app.config['ALLOWED_ORIGIN']])
+    CORS(app, origins=app.config['ALLOWED_ORIGINS'])
 
     from .routes.admin import admin_bp
     from .routes.auth import auth_bp

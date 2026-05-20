@@ -31,7 +31,7 @@ services:
       - "5000:5000"
     environment:
       DATABASE_URL: postgresql://bikeflow:bikeflow@db:5432/bikeflow
-      ALLOWED_ORIGIN: http://localhost:5173
+      ALLOWED_ORIGINS: http://localhost:5173,https://bikebooking-akyr.onrender.com
       LOCAL_ADMIN_NAME: Jeremy
       LOCAL_ADMIN_EMAIL: jeremy@bikeflow.local
       LOCAL_ADMIN_PASSWORD: JeremyBike26!

@@ -162,7 +162,7 @@ back/
 DATABASE_URL=postgresql://bikeflow:bikeflow@db:5432/bikeflow
 FLASK_ENV=development
 FLASK_DEBUG=1
-ALLOWED_ORIGIN=http://localhost:5173
+ALLOWED_ORIGINS=http://localhost:5173,https://bikebooking-akyr.onrender.com
 ```
 
 ---
