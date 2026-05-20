@@ -88,10 +88,36 @@ def test_create_reservation_slot_conflict(client):
 
 
 def test_cancel_reservation(client):
-    with patch('app.routes.reservations.get_db') as mock_get_db:
+    with patch('app.routes.reservations.get_db') as mock_get_db, \
+         patch('app.routes.reservations.get_entra_user_from_request') as mock_get_entra_user:
         mock_cursor = MagicMock()
         mock_cursor.fetchone.return_value = make_cancel_row()  # réservation compte utilisateur
         mock_get_db.return_value.cursor.return_value = mock_cursor
+        mock_get_entra_user.return_value = {'user_id': 1, 'is_admin': False}
+
+        resp = client.patch('/reservations/1/cancel')
+        assert resp.status_code == 200
+
+
+def test_cancel_user_reservation_rejects_other_user(client):
+    with patch('app.routes.reservations.get_db') as mock_get_db, \
+         patch('app.routes.reservations.get_entra_user_from_request') as mock_get_entra_user:
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = make_cancel_row(user_id=1)
+        mock_get_db.return_value.cursor.return_value = mock_cursor
+        mock_get_entra_user.return_value = {'user_id': 2, 'is_admin': False}
+
+        resp = client.patch('/reservations/1/cancel')
+        assert resp.status_code == 403
+
+
+def test_cancel_user_reservation_allows_admin(client):
+    with patch('app.routes.reservations.get_db') as mock_get_db, \
+         patch('app.routes.reservations.get_entra_user_from_request') as mock_get_entra_user:
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = make_cancel_row(user_id=1)
+        mock_get_db.return_value.cursor.return_value = mock_cursor
+        mock_get_entra_user.return_value = {'user_id': 2, 'is_admin': True}
 
         resp = client.patch('/reservations/1/cancel')
         assert resp.status_code == 200

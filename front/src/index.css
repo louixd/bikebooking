@@ -24,6 +24,34 @@ body {
   min-height: 100vh;
 }
 
+.auth-gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.auth-gate-panel {
+  width: min(100%, 440px);
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(53, 92, 170, 0.12);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.auth-gate-panel h1 {
+  font-size: 1.55rem;
+  line-height: 1.2;
+}
+.auth-gate-panel p {
+  color: rgba(19,32,51,0.68);
+  line-height: 1.5;
+}
+
 .app-header {
   background: rgba(255,255,255,0.82);
   backdrop-filter: blur(14px);
@@ -60,6 +88,55 @@ nav { display: flex; gap: 0.5rem; }
   padding: 0.35rem 0.45rem 0.35rem 0.9rem;
 }
 .local-auth-label { font-size: 0.88rem; color: rgba(19,32,51,0.82); }
+
+.microsoft-login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid rgba(19, 32, 51, 0.14);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--dark);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+.microsoft-login-btn:hover:not(:disabled) {
+  background: #f7f9fc;
+  border-color: rgba(53, 92, 170, 0.28);
+}
+.microsoft-login-btn:disabled { opacity: 0.68; cursor: wait; }
+.microsoft-mark {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+}
+.microsoft-mark i:nth-child(1) { background: #f25022; }
+.microsoft-mark i:nth-child(2) { background: #7fba00; }
+.microsoft-mark i:nth-child(3) { background: #00a4ef; }
+.microsoft-mark i:nth-child(4) { background: #ffb900; }
+.auth-error-banner {
+  max-width: 1180px;
+  margin: 1rem auto 0;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  background: #fdecea;
+  color: #9a2020;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.auth-error-banner button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 700;
+}
 
 .nav-btn {
   background: transparent;
@@ -152,6 +229,40 @@ nav { display: flex; gap: 0.5rem; }
   color: rgba(19,32,51,0.68);
   line-height: 1.5;
 }
+
+.activity-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+.activity-card {
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(53, 92, 170, 0.1);
+  border-radius: 20px;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+  min-height: 104px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.activity-card span {
+  color: rgba(19,32,51,0.58);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.activity-card strong {
+  font-size: 1.9rem;
+  line-height: 1;
+}
+.activity-card-primary {
+  background: linear-gradient(145deg, rgba(29,169,76,0.14), rgba(255,255,255,0.98));
+  border-color: rgba(29,169,76,0.24);
+}
+.activity-card-wide { grid-column: span 2; }
 
 /* Bike grid */
 .bike-grid {
@@ -660,9 +771,12 @@ nav { display: flex; gap: 0.5rem; }
   }
 
   .returns-hero,
-  .returns-summary-grid {
+  .returns-summary-grid,
+  .activity-summary {
     grid-template-columns: 1fr;
   }
+
+  .activity-card-wide { grid-column: auto; }
 
   .admin-bike-manager {
     grid-template-columns: 1fr;

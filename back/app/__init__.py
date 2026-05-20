@@ -29,10 +29,10 @@ def create_app():
     app = Flask(__name__)
     app.config['DATABASE_URL'] = database_url_from_env()
     app.config['ALLOWED_ORIGINS'] = _allowed_origins()
-    app.config['ADMIN_PASSWORD'] = os.environ.get('ADMIN_PASSWORD', 'bikeflow-admin')
-    app.config['LOCAL_ADMIN_NAME'] = os.environ.get('LOCAL_ADMIN_NAME', 'Jeremy')
-    app.config['LOCAL_ADMIN_EMAIL'] = os.environ.get('LOCAL_ADMIN_EMAIL', 'jeremy@bikeflow.local')
-    app.config['LOCAL_ADMIN_PASSWORD'] = os.environ.get('LOCAL_ADMIN_PASSWORD', 'JeremyBike26!')
+    app.config['ENTRA_TENANT_ID'] = os.environ.get('ENTRA_TENANT_ID') or os.environ.get('AZURE_TENANT_ID')
+    app.config['ENTRA_CLIENT_ID'] = os.environ.get('ENTRA_CLIENT_ID') or os.environ.get('AZURE_CLIENT_ID')
+    app.config['ENTRA_ADMIN_EMAILS'] = os.environ.get('ENTRA_ADMIN_EMAILS', '')
+    app.config['ENTRA_ADMIN_OBJECT_IDS'] = os.environ.get('ENTRA_ADMIN_OBJECT_IDS', '')
 
     CORS(app, origins=app.config['ALLOWED_ORIGINS'])
 

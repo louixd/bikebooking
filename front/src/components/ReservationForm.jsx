@@ -19,7 +19,7 @@ export default function ReservationForm({ bike, bikeStatus = bike, slot, onSlotC
   async function handleSubmit(e) {
     e.preventDefault()
     if (!slot.reservation_date || !slot.return_date) { setError('Sélectionne un créneau valide.'); return }
-    if (bikeUnavailableOnSlot) { setError(bikeStatus?.availability_label || 'Ce vélo est déjà réservé sur ce créneau.'); return }
+    if (bikeUnavailableOnSlot) { setError(bikeStatus?.availability_label || 'Ce vélo est réservé sur ce créneau.'); return }
     if (!currentUser?.user_id && !guestName.trim()) { setError('Renseigne ton nom et prénom pour réserver.'); return }
     setError(null)
     setLoading(true)
@@ -54,7 +54,7 @@ export default function ReservationForm({ bike, bikeStatus = bike, slot, onSlotC
           <SlotPicker value={slot} onChange={onSlotChange} />
 
           {bikeUnavailableOnSlot && (
-            <p className="form-error">{bikeStatus?.availability_label || 'Ce vélo est déjà réservé sur ce créneau.'}</p>
+            <p className="form-error">{bikeStatus?.availability_label || 'Ce vélo est réservé sur ce créneau.'}</p>
           )}
           {currentUser ? (
             <>

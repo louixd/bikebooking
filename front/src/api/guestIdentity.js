@@ -1,66 +1,46 @@
-const GUEST_OWNER_COOKIE = 'bikeflow_guest_owner'
-const GUEST_RESERVATIONS_COOKIE = 'bikeflow_guest_reservations'
-const LEGACY_SESSION_RESERVATIONS_KEY = 'bikeflow-guest-reservations'
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
+const GUEST_TOKEN_KEY = 'bikeflow-guest-owner-token'
+const GUEST_RESERVATIONS_KEY = 'bikeflow-guest-reservation-ids'
+const LEGACY_GUEST_RESERVATIONS_KEY = 'bikeflow-my-reservation-ids'
 
-function cookieOptions() {
-  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : ''
-  return `Path=/; Max-Age=${COOKIE_MAX_AGE}; SameSite=Lax${secure}`
-}
-
-function getCookie(name) {
-  if (typeof document === 'undefined') return null
-  const prefix = `${name}=`
-  const item = document.cookie.split('; ').find((part) => part.startsWith(prefix))
-  return item ? decodeURIComponent(item.slice(prefix.length)) : null
-}
-
-function setCookie(name, value) {
-  if (typeof document === 'undefined') return
-  document.cookie = `${name}=${encodeURIComponent(value)}; ${cookieOptions()}`
-}
-
-function createGuestOwnerToken() {
+function randomToken() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
-  return `guest-${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
-
-function normalizeReservationIds(value) {
-  return Array.isArray(value)
-    ? value.map((item) => Number(item)).filter((item) => Number.isInteger(item) && item > 0)
-    : []
+  return `guest-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 export function getGuestOwnerToken() {
-  const existing = getCookie(GUEST_OWNER_COOKIE)
-  if (existing) return existing
-  const token = createGuestOwnerToken()
-  setCookie(GUEST_OWNER_COOKIE, token)
+  if (typeof window === 'undefined') return ''
+  let token = localStorage.getItem(GUEST_TOKEN_KEY)
+  if (!token) {
+    token = randomToken()
+    localStorage.setItem(GUEST_TOKEN_KEY, token)
+  }
   return token
 }
 
 export function loadGuestReservationIds() {
-  try {
-    const cookieValue = getCookie(GUEST_RESERVATIONS_COOKIE)
-    if (cookieValue) return normalizeReservationIds(JSON.parse(cookieValue))
-  } catch {
-    setCookie(GUEST_RESERVATIONS_COOKIE, '[]')
+  if (typeof window === 'undefined') return []
+  const raw = localStorage.getItem(GUEST_RESERVATIONS_KEY)
+  if (raw) {
+    try {
+      return JSON.parse(raw).map(Number).filter(Boolean)
+    } catch {
+      localStorage.removeItem(GUEST_RESERVATIONS_KEY)
+    }
   }
 
+  const legacyRaw = localStorage.getItem(LEGACY_GUEST_RESERVATIONS_KEY)
+  if (!legacyRaw) return []
   try {
-    const legacyValue = typeof window !== 'undefined'
-      ? window.sessionStorage.getItem(LEGACY_SESSION_RESERVATIONS_KEY)
-      : null
-    const legacyIds = legacyValue ? normalizeReservationIds(JSON.parse(legacyValue)) : []
+    const legacyIds = JSON.parse(legacyRaw).map(Number).filter(Boolean)
     if (legacyIds.length) saveGuestReservationIds(legacyIds)
     return legacyIds
   } catch {
+    localStorage.removeItem(LEGACY_GUEST_RESERVATIONS_KEY)
     return []
   }
 }
 
 export function saveGuestReservationIds(ids) {
-  const uniqueIds = Array.from(new Set(normalizeReservationIds(ids)))
-  setCookie(GUEST_RESERVATIONS_COOKIE, JSON.stringify(uniqueIds))
-  return uniqueIds
+  if (typeof window === 'undefined') return
+  localStorage.setItem(GUEST_RESERVATIONS_KEY, JSON.stringify(Array.from(new Set(ids))))
 }

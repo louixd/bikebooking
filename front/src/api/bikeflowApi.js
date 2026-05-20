@@ -1,11 +1,23 @@
 import { getGuestOwnerToken } from './guestIdentity.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+let authToken = sessionStorage.getItem('bikeflow-entra-id-token') || null
+
+export function setAuthToken(token) {
+  authToken = token || null
+  if (authToken) {
+    sessionStorage.setItem('bikeflow-entra-id-token', authToken)
+  } else {
+    sessionStorage.removeItem('bikeflow-entra-id-token')
+  }
+}
 
 async function request(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  if (authToken && !headers.Authorization) headers.Authorization = `Bearer ${authToken}`
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers,
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ description: res.statusText }))
@@ -20,8 +32,8 @@ export const updateBike = (id, data) => request(`/bikes/${id}`, { method: 'PATCH
 export const deleteBike = (id) => request(`/bikes/${id}`, { method: 'DELETE' })
 export const fetchUsers = () => request('/users')
 export const createUser = (data) => request('/users', { method: 'POST', body: JSON.stringify(data) })
-export const loginLocal = (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) })
-export const registerLocal = (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) })
+export const loginEntra = (idToken) => request('/auth/entra', { method: 'POST', body: JSON.stringify({ id_token: idToken }) })
+export const fetchMyStats = () => request('/auth/me/stats')
 export const fetchReservations = (params = {}) => {
   const qs = new URLSearchParams(params).toString()
   return request(`/reservations${qs ? '?' + qs : ''}`)
@@ -37,7 +49,6 @@ export const cancelReservation = (id, options = {}) => {
   if (options.guestOwnerToken !== false) {
     headers['X-Bikeflow-Guest-Token'] = options.guestOwnerToken || getGuestOwnerToken()
   }
-  if (options.admin) headers['X-Bikeflow-Admin'] = 'true'
   return request(`/reservations/${id}/cancel`, { method: 'PATCH', headers })
 }
 export const fetchReparations = (bikeId = null) => {
@@ -63,7 +74,10 @@ export async function createReturnWithPhotos(data) {
   ;(data.photos || []).forEach((f) => fd.append('photos', f))
   const res = await fetch(`${BASE_URL}/returns`, {
     method: 'POST',
-    headers: { 'X-Bikeflow-Guest-Token': getGuestOwnerToken() },
+    headers: {
+      'X-Bikeflow-Guest-Token': getGuestOwnerToken(),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
     body: fd,
   })
   if (!res.ok) {

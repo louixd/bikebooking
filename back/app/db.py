@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from flask import current_app, g
 import psycopg
 from psycopg.rows import dict_row
-from werkzeug.security import generate_password_hash
 
 
 class PgRow:
@@ -106,7 +105,7 @@ def open_connection(database_url=None):
 
 
 def ensure_auth_schema(app):
-    """Initialise le schema PostgreSQL et seed l'admin local par defaut."""
+    """Initialise le schema PostgreSQL et synchronise les admins Entra configures."""
     conn = open_connection(app.config['DATABASE_URL'])
     try:
         cursor = conn.cursor()
@@ -117,7 +116,8 @@ def ensure_auth_schema(app):
                 UserEmail VARCHAR(255) NOT NULL UNIQUE,
                 IsAdmin SMALLINT NOT NULL DEFAULT 0,
                 RoleName VARCHAR(50),
-                PasswordHash VARCHAR(255)
+                PasswordHash VARCHAR(255),
+                EntraObjectId VARCHAR(80)
             )
         """)
         cursor.execute("""
@@ -161,38 +161,42 @@ def ensure_auth_schema(app):
                 ProblemState VARCHAR(120),
                 ReturnState VARCHAR(40),
                 ReturnComment TEXT,
+                MileageKm NUMERIC(10, 1),
                 BikeId INTEGER REFERENCES bike(BikeId) ON DELETE SET NULL
             )
         """)
+        cursor.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS EntraObjectId VARCHAR(80)")
+        cursor.execute("ALTER TABLE bike_return ADD COLUMN IF NOT EXISTS MileageKm NUMERIC(10, 1)")
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_entra_object_id ON app_user (EntraObjectId) WHERE EntraObjectId IS NOT NULL")
         cursor.execute("UPDATE app_user SET RoleName = CASE WHEN IsAdmin = 1 THEN 'admin' ELSE 'user' END WHERE RoleName IS NULL")
 
-        admin_name = app.config.get('LOCAL_ADMIN_NAME', 'Jeremy')
-        admin_email = app.config.get('LOCAL_ADMIN_EMAIL', 'jeremy@bikeflow.local').strip().lower()
-        admin_password = app.config.get('LOCAL_ADMIN_PASSWORD', 'JeremyBike26!')
-        password_hash = generate_password_hash(admin_password)
+        admin_emails = [
+            email.strip().lower()
+            for email in str(app.config.get('ENTRA_ADMIN_EMAILS') or '').split(',')
+            if email.strip()
+        ]
+        for admin_email in admin_emails:
+            cursor.execute("SELECT UserId FROM app_user WHERE LOWER(UserEmail) = %s", admin_email)
+            row = cursor.fetchone()
+            if row:
+                cursor.execute(
+                    """
+                    UPDATE app_user
+                    SET IsAdmin = 1, RoleName = 'admin'
+                    WHERE UserId = %s
+                    """,
+                    row.UserId,
+                )
+                continue
 
-        cursor.execute("SELECT UserId FROM app_user WHERE LOWER(UserEmail) = %s", admin_email)
-        row = cursor.fetchone()
-        if row:
+            admin_name = admin_email.split('@')[0]
             cursor.execute(
                 """
-                UPDATE app_user
-                SET UserName = %s, IsAdmin = 1, RoleName = 'admin', PasswordHash = %s
-                WHERE UserId = %s
-                """,
-                admin_name,
-                password_hash,
-                row.UserId,
-            )
-        else:
-            cursor.execute(
-                """
-                INSERT INTO app_user (UserName, UserEmail, IsAdmin, RoleName, PasswordHash)
-                VALUES (%s, %s, 1, 'admin', %s)
+                INSERT INTO app_user (UserName, UserEmail, IsAdmin, RoleName)
+                VALUES (%s, %s, 1, 'admin')
                 """,
                 admin_name,
                 admin_email,
-                password_hash,
             )
         conn.commit()
     except Exception:

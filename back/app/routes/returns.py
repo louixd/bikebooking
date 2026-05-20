@@ -17,6 +17,7 @@ def _row_to_dict(row):
         'problem_state': row.ProblemState,
         'return_state': row.ReturnState,
         'return_comment': row.ReturnComment,
+        'mileage_km': float(row.MileageKm) if hasattr(row, 'MileageKm') and row.MileageKm is not None else None,
         'bike_id': row.BikeId,
         'reservation_code': row.ReservationCode if hasattr(row, 'ReservationCode') else None,
         'bike_name': row.BikeName if hasattr(row, 'BikeName') else None,
@@ -29,7 +30,7 @@ def get_returns():
     """Retourne l'historique des retours, du plus recent au plus ancien."""
     cursor = get_db().cursor()
     cursor.execute("""
-        SELECT ret.ReturnId, ret.ReservationId, ret.ReturnDate, ret.ProblemState, ret.ReturnState, ret.ReturnComment,
+        SELECT ret.ReturnId, ret.ReservationId, ret.ReturnDate, ret.ProblemState, ret.ReturnState, ret.ReturnComment, ret.MileageKm,
                ret.BikeId, res.ReservationCode, bike.BikeName
         FROM dbo.[Return] ret
         LEFT JOIN dbo.Reservation res ON res.ReservationId = ret.ReservationId
@@ -44,7 +45,7 @@ def get_return(reservation_id):
     """Retourne le retour associé à une réservation ou 404."""
     cursor = get_db().cursor()
     cursor.execute(
-        "SELECT ReturnId, ReservationId, ReturnDate, ProblemState, ReturnState, ReturnComment, BikeId FROM dbo.[Return] WHERE ReservationId = ?",
+        "SELECT ReturnId, ReservationId, ReturnDate, ProblemState, ReturnState, ReturnComment, MileageKm, BikeId FROM dbo.[Return] WHERE ReservationId = ?",
         reservation_id
     )
     row = cursor.fetchone()
@@ -93,9 +94,17 @@ def create_return():
 
     problem_state = (data.get('problem_state') or '').strip() or None
     return_state = (data.get('return_state') or '').strip() or None
+    mileage_km = None
+    if data.get('mileage') not in (None, ''):
+        try:
+            mileage_km = round(float(str(data.get('mileage')).replace(',', '.')), 1)
+        except (TypeError, ValueError):
+            abort(400, description="Le kilometrage doit etre un nombre.")
+        if mileage_km < 0:
+            abort(400, description="Le kilometrage ne peut pas etre negatif.")
     comment_parts = []
-    if data.get('mileage'):
-        comment_parts.append(f"Kilométrage : {data['mileage']} km")
+    if mileage_km is not None:
+        comment_parts.append(f"Kilométrage : {mileage_km:g} km")
     if data.get('return_comment'):
         comment_parts.append(str(data['return_comment']).strip())
     return_comment = "\n".join(comment_parts) or None
@@ -105,15 +114,15 @@ def create_return():
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO dbo.[Return] (ReservationId, ProblemState, ReturnState, ReturnComment, BikeId)
+        INSERT INTO dbo.[Return] (ReservationId, ProblemState, ReturnState, ReturnComment, MileageKm, BikeId)
         OUTPUT INSERTED.ReturnId
-        VALUES (?, ?, ?, ?, ?)
-    """, reservation_id, problem_state, return_state, return_comment, bike_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, reservation_id, problem_state, return_state, return_comment, mileage_km, bike_id)
     new_id = cursor.fetchone()[0]
     conn.commit()
 
     cursor.execute(
-        "SELECT ReturnId, ReservationId, ReturnDate, ProblemState, ReturnState, ReturnComment, BikeId FROM dbo.[Return] WHERE ReturnId = ?",
+        "SELECT ReturnId, ReservationId, ReturnDate, ProblemState, ReturnState, ReturnComment, MileageKm, BikeId FROM dbo.[Return] WHERE ReturnId = ?",
         new_id
     )
     result = _row_to_dict(cursor.fetchone())

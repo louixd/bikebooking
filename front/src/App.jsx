@@ -1,85 +1,79 @@
 import { useEffect, useMemo, useState } from 'react'
 import HomePage from './pages/HomePage.jsx'
 import AdminPage from './pages/AdminPage.jsx'
-import { loginLocal } from './api/bikeflowApi.js'
-
-const EMPTY_LOGIN = { email: '', password: '' }
-
-function AuthModal({ onClose, onSuccess }) {
-  const [loginForm, setLoginForm] = useState(EMPTY_LOGIN)
-  const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(false)
-
-  async function handleLogin(e) {
-    e.preventDefault()
-    setError(null)
-    setLoading(true)
-    try {
-      const user = await loginLocal(loginForm)
-      onSuccess(user)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal auth-modal">
-        <form onSubmit={handleLogin}>
-          <h2>Connexion locale</h2>
-          <p className="modal-info">Connexion reservee aux comptes deja crees, notamment l'administration.</p>
-          <label htmlFor="login-email">Email</label>
-          <input id="login-email" type="email" value={loginForm.email} onChange={(e) => setLoginForm((prev) => ({ ...prev, email: e.target.value }))} required />
-          <label htmlFor="login-password">Mot de passe</label>
-          <input id="login-password" type="password" value={loginForm.password} onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value }))} required />
-          {error && <p className="form-error">{error}</p>}
-          <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>Fermer</button>
-            <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Connexion...' : 'Se connecter'}</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
+import { loginEntra, setAuthToken } from './api/bikeflowApi.js'
+import { initializeEntraSession, signInWithEntra } from './api/entraAuth.js'
 
 export default function App() {
   const [page, setPage] = useState('home')
   const [currentUser, setCurrentUser] = useState(null)
-  const [authModalMode, setAuthModalMode] = useState(null)
+  const [authError, setAuthError] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authReady, setAuthReady] = useState(false)
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('bikeflow-current-user')
-    if (raw) {
+    let isMounted = true
+
+    async function bootMicrosoftSession() {
+      setAuthError(null)
+      setAuthLoading(true)
       try {
-        setCurrentUser(JSON.parse(raw))
-      } catch {
-        sessionStorage.removeItem('bikeflow-current-user')
+        const idToken = await initializeEntraSession()
+        if (!idToken || !isMounted) return
+        setAuthToken(idToken)
+        const user = await loginEntra(idToken)
+        if (!isMounted) return
+        sessionStorage.setItem('bikeflow-current-user', JSON.stringify(user))
+        setCurrentUser(user)
+        if (user.is_admin) setPage('admin')
+        setAuthReady(true)
+      } catch (err) {
+        if (!isMounted) return
+        setAuthError(err.message)
+        setAuthReady(false)
+      } finally {
+        if (isMounted) setAuthLoading(false)
       }
+    }
+
+    bootMicrosoftSession()
+    return () => {
+      isMounted = false
     }
   }, [])
 
-  function handleAuthSuccess(user) {
-    sessionStorage.setItem('bikeflow-current-user', JSON.stringify(user))
-    setCurrentUser(user)
-    setAuthModalMode(null)
-    if (user.is_admin && page !== 'admin' && page !== 'returns') {
-      setPage('admin')
+  async function handleMicrosoftLogin() {
+    setAuthError(null)
+    setAuthLoading(true)
+    try {
+      await signInWithEntra()
+    } catch (err) {
+      setAuthError(err.message)
+      setAuthLoading(false)
+    } finally {
     }
   }
 
-  function handleLogout() {
-    sessionStorage.removeItem('bikeflow-current-user')
-    setCurrentUser(null)
-    setPage('home')
-  }
-
   const authLabel = useMemo(() => {
-    if (!currentUser) return 'Connexion locale'
+    if (!currentUser) return 'Connexion Microsoft'
     return `${currentUser.user_name} - ${currentUser.role_name}`
   }, [currentUser])
+
+  if (!authReady || !currentUser) {
+    return (
+      <div className="auth-gate">
+        <div className="auth-gate-panel">
+          <div className="app-logo">BikeFlow</div>
+          <h1>Connexion Microsoft</h1>
+          <p>{authError ? authError : 'Ouverture de session avec votre compte entreprise...'}</p>
+          <button className="microsoft-login-btn" onClick={handleMicrosoftLogin} disabled={authLoading && !authError}>
+            <span className="microsoft-mark" aria-hidden="true"><i /><i /><i /><i /></span>
+            {authLoading && !authError ? 'Connexion...' : 'Se connecter avec Microsoft'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -96,20 +90,15 @@ export default function App() {
         <div className="header-actions">
           <div className="local-auth-chip">
             <span className="local-auth-label">{authLabel}</span>
-            {currentUser ? (
-              <button className="nav-btn" onClick={handleLogout}>Se deconnecter</button>
-            ) : (
-              <button className="nav-btn" onClick={() => setAuthModalMode('login')}>Connexion admin</button>
-            )}
           </div>
         </div>
       </header>
+      {authError && <div className="auth-error-banner">{authError} <button onClick={() => setAuthError(null)}>Fermer</button></div>}
       <main className="app-main">
-        {page === 'home' && <HomePage currentUser={currentUser} onRequireAuth={setAuthModalMode} />}
+        {page === 'home' && <HomePage currentUser={currentUser} />}
         {page === 'admin' && currentUser?.is_admin && <AdminPage mode="manage" />}
         {page === 'returns' && currentUser?.is_admin && <AdminPage mode="returns" />}
       </main>
-      {authModalMode && <AuthModal onClose={() => setAuthModalMode(null)} onSuccess={handleAuthSuccess} />}
     </div>
   )
 }

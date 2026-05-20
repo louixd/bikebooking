@@ -3,6 +3,7 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request, abort
 from ..db import get_db
 from ..email import send_email, get_reservation_notify_email
+from ..entra import get_entra_user_from_request
 
 reservations_bp = Blueprint('reservations', __name__, url_prefix='/reservations')
 
@@ -78,6 +79,10 @@ def create_reservation():
         abort(400, description=f"Champs requis : {required}")
     user_id = data.get('user_id')
     user_name_free = data.get('user_name_free', '').strip() if data.get('user_name_free') else None
+    entra_user = get_entra_user_from_request(required=False)
+    if entra_user:
+        user_id = entra_user['user_id']
+        user_name_free = None
     guest_owner_token = None if user_id else _get_guest_owner_token()
     if not user_id and not user_name_free:
         abort(400, description="Fournis soit un user_id (utilisateur DB) soit un user_name_free (saisie libre).")
@@ -166,10 +171,14 @@ def cancel_reservation(reservation_id):
     if not row:
         abort(404, description="Réservation introuvable.")
 
-    is_admin_override = request.headers.get('X-Bikeflow-Admin') == 'true'
+    entra_user = get_entra_user_from_request(required=False)
+    is_admin_override = bool(entra_user and entra_user['is_admin'])
+    if row.UserId and not is_admin_override:
+        if not entra_user or row.UserId != entra_user['user_id']:
+            abort(403, description="Cette réservation appartient à un autre utilisateur.")
     if not row.UserId and row.GuestOwnerToken and not is_admin_override:
-                if _get_guest_owner_token() != row.GuestOwnerToken:
-                        abort(403, description="Cette réservation appartient à un autre navigateur.")
+        if _get_guest_owner_token() != row.GuestOwnerToken:
+            abort(403, description="Cette réservation appartient à un autre navigateur.")
 
     cursor.execute("UPDATE dbo.Reservation SET IsValidate = 0 WHERE ReservationId = ?", reservation_id)
     conn.commit()

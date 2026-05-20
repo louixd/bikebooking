@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import BikeCard from '../components/BikeCard.jsx'
 import ReservationForm from '../components/ReservationForm.jsx'
 import ReservationList from '../components/ReservationList.jsx'
 import ReturnForm from '../components/ReturnForm.jsx'
-import { fetchBikes, fetchUsers, fetchReservations, createReservation, cancelReservation } from '../api/bikeflowApi.js'
+import { fetchBikes, fetchUsers, fetchReservations, createReservation, cancelReservation, fetchMyStats } from '../api/bikeflowApi.js'
 import { getGuestOwnerToken, loadGuestReservationIds, saveGuestReservationIds } from '../api/guestIdentity.js'
 
 const DEFAULT_QUICK_SLOT = { quick_slot: 'morning', start_time: '08:00', end_time: '12:00' }
@@ -32,7 +32,39 @@ function getDefaultSlot() {
   return buildSlotState({ ...DEFAULT_QUICK_SLOT, start_date: today, end_date: today, date: today })
 }
 
-export default function HomePage({ currentUser = null, onRequireAuth }) {
+function ActivitySummary({ stats }) {
+  if (!stats) return null
+  return (
+    <section className="activity-summary" aria-label="Activite personnelle">
+      <div className="activity-card activity-card-primary">
+        <span>Vélos loués</span>
+        <strong>{stats.total_reservations}</strong>
+      </div>
+      <div className="activity-card">
+        <span>Kilomètres</span>
+        <strong>{stats.total_km}</strong>
+      </div>
+      <div className="activity-card">
+        <span>Retours faits</span>
+        <strong>{stats.returned_reservations}</strong>
+      </div>
+      <div className="activity-card">
+        <span>Vélos différents</span>
+        <strong>{stats.unique_bikes}</strong>
+      </div>
+      <div className="activity-card activity-card-wide">
+        <span>Vélo favori</span>
+        <strong>{stats.favorite_bike || '-'}</strong>
+      </div>
+      <div className="activity-card activity-card-wide">
+        <span>Locations actives</span>
+        <strong>{stats.active_reservations}</strong>
+      </div>
+    </section>
+  )
+}
+
+export default function HomePage({ currentUser = null }) {
   const [bikes, setBikes] = useState([])
   const [users, setUsers] = useState([])
   const [allReservations, setAllReservations] = useState([])
@@ -40,13 +72,30 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
   const [selectedBike, setSelectedBike] = useState(null)
   const [returnTarget, setReturnTarget] = useState(null)
   const [guestReservationIds, setGuestReservationIds] = useState(loadGuestReservationIds)
+  const [activityStats, setActivityStats] = useState(null)
   const [error, setError] = useState(null)
+
+  const refreshActivityStats = useCallback(async () => {
+    if (!currentUser) {
+      setActivityStats(null)
+      return
+    }
+    try {
+      setActivityStats(await fetchMyStats())
+    } catch {
+      setActivityStats(null)
+    }
+  }, [currentUser])
 
   useEffect(() => {
     fetchBikes().then(setBikes).catch((err) => setError(err.message || 'Impossible de charger les velos.'))
     fetchUsers().then(setUsers).catch(() => {})
     fetchReservations().then(setAllReservations).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    refreshActivityStats()
+  }, [refreshActivityStats])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -98,7 +147,7 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
       return {
         ...bike,
         is_available: !reservedOnSlot,
-        availability_label: reservedOnSlot ? 'Déjà réservé' : 'Disponible sur ce créneau',
+        availability_label: reservedOnSlot ? 'Réservé' : 'Disponible sur ce créneau',
         reserve_disabled: reservedOnSlot,
         status_variant: reservedOnSlot ? 'ko' : 'ok',
       }
@@ -113,13 +162,14 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
 
   async function handleSubmitReservation(data) {
     const created = await createReservation(data)
-    if (created?.reservation_id) {
+    if (!currentUser && created?.reservation_id) {
       setGuestReservationIds((currentIds) => Array.from(new Set([...currentIds, created.reservation_id])))
     }
     setSelectedBike(null)
     const [updatedBikes, updatedAll] = await Promise.all([fetchBikes(), fetchReservations()])
     setBikes(updatedBikes)
     setAllReservations(updatedAll)
+    await refreshActivityStats()
   }
 
   async function handleCancel(id) {
@@ -128,6 +178,7 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
     const [updatedBikes, updatedAll] = await Promise.all([fetchBikes(), fetchReservations()])
     setBikes(updatedBikes)
     setAllReservations(updatedAll)
+    await refreshActivityStats()
   }
 
   function handleReturn(reservation) {
@@ -147,17 +198,19 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
           <p className="hero-kicker">Plateforme interne</p>
           <h1>BikeFlow - Gestion vélos entreprise</h1>
           <p className="hero-copy">
-            Consulte la flotte, suis les retours terrain et réserve depuis un compte administrateur.
+            Consulte la flotte, réserve un vélo et retrouve ton historique personnel depuis ton compte Microsoft entreprise.
           </p>
         </div>
         <div className="hero-badge-card">
           <span className="hero-badge-label">Session</span>
-          <strong>{currentUser ? currentUser.user_name : 'Invité'}</strong>
-          <p>{currentUser ? currentUser.role_name : "Réservation libre, sans connexion obligatoire."}</p>
+          <strong>{currentUser.user_name}</strong>
+          <p>{currentUser.role_name}</p>
         </div>
       </section>
 
       {error && <div className="alert-error">{error} <button onClick={() => setError(null)}>Fermer</button></div>}
+
+      {currentUser && <ActivitySummary stats={activityStats} />}
 
       <section className="section user-safety-section">
         <h2>Consignes de sécurité</h2>
@@ -227,6 +280,7 @@ export default function HomePage({ currentUser = null, onRequireAuth }) {
             const [updatedBikes, updatedAll] = await Promise.all([fetchBikes(), fetchReservations()])
             setBikes(updatedBikes)
             setAllReservations(updatedAll)
+            await refreshActivityStats()
           }}
         />
       )}

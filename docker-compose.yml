@@ -32,9 +32,9 @@ services:
     environment:
       DATABASE_URL: postgresql://bikeflow:bikeflow@db:5432/bikeflow
       ALLOWED_ORIGINS: http://localhost:5173,https://bikebooking-akyr.onrender.com
-      LOCAL_ADMIN_NAME: Jeremy
-      LOCAL_ADMIN_EMAIL: jeremy@bikeflow.local
-      LOCAL_ADMIN_PASSWORD: JeremyBike26!
+      ENTRA_TENANT_ID: 619f3e30-d007-4bab-a865-fde60890ea08
+      ENTRA_CLIENT_ID: 5de9919b-0835-43df-9d3d-7d5c6f9998d7
+      ENTRA_ADMIN_EMAILS: lcuzin@elcia.com,jbussiere@elcia.com
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       SMTP_USE_TLS: 0
@@ -53,7 +53,10 @@ services:
     build: ./front
     ports:
       - "5173:5173"
-    env_file: ./front/.env
+    environment:
+      VITE_API_URL: http://localhost:5000
+      VITE_ENTRA_TENANT_ID: 619f3e30-d007-4bab-a865-fde60890ea08
+      VITE_ENTRA_CLIENT_ID: 5de9919b-0835-43df-9d3d-7d5c6f9998d7
     depends_on:
       - back
     networks:

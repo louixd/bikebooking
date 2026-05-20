@@ -10,7 +10,7 @@ ALLOWED_ORIGINS = ','.join(filter(None, [
 	os.environ.get('ALLOWED_ORIGIN', ''),
 	os.environ.get('ALLOWED_ORIGINS', ''),
 ]))
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'bikeflow-admin')
-LOCAL_ADMIN_NAME = os.environ.get('LOCAL_ADMIN_NAME', 'Jeremy')
-LOCAL_ADMIN_EMAIL = os.environ.get('LOCAL_ADMIN_EMAIL', 'jeremy@bikeflow.local')
-LOCAL_ADMIN_PASSWORD = os.environ.get('LOCAL_ADMIN_PASSWORD', 'JeremyBike26!')
+ENTRA_TENANT_ID = os.environ.get('ENTRA_TENANT_ID') or os.environ.get('AZURE_TENANT_ID')
+ENTRA_CLIENT_ID = os.environ.get('ENTRA_CLIENT_ID') or os.environ.get('AZURE_CLIENT_ID')
+ENTRA_ADMIN_EMAILS = os.environ.get('ENTRA_ADMIN_EMAILS', '')
+ENTRA_ADMIN_OBJECT_IDS = os.environ.get('ENTRA_ADMIN_OBJECT_IDS', '')
