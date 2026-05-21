@@ -80,12 +80,12 @@ export default function App() {
       <header className="app-header app-header-vivid">
         <div className="app-logo-block">
           <div className="app-logo">BikeFlow</div>
-          <p className="app-subtitle">Flotte velo entreprise, version locale</p>
+          <p className="app-subtitle">Flotte de vélos d'entreprise, version locale</p>
         </div>
         <nav>
-          {currentUser?.is_admin && <button className={page === 'home' ? 'nav-btn active' : 'nav-btn'} onClick={() => setPage('home')}>Reservations</button>}
+          {currentUser?.is_admin && <button className={page === 'home' ? 'nav-btn active' : 'nav-btn'} onClick={() => setPage('home')}>Réservations</button>}
           {currentUser?.is_admin && <button className={page === 'admin' ? 'nav-btn active' : 'nav-btn'} onClick={() => setPage('admin')}>Administration</button>}
-          {currentUser?.is_admin && <button className={page === 'returns' ? 'nav-btn active' : 'nav-btn'} onClick={() => setPage('returns')}>Historique retours</button>}
+          {currentUser?.is_admin && <button className={page === 'returns' ? 'nav-btn active' : 'nav-btn'} onClick={() => setPage('returns')}>Historique des retours</button>}
         </nav>
         <div className="header-actions">
           <div className="local-auth-chip">

@@ -10,7 +10,7 @@ const SIZE_LABELS = {
 }
 
 function formatBikeName(name) {
-  return /^\d+$/.test(String(name)) ? `Velo ${name}` : name
+  return /^\d+$/.test(String(name)) ? `Vélo ${name}` : name
 }
 
 function getBikeFamily(description = '') {
@@ -35,6 +35,9 @@ export default function BikeCard({ bike, onReserve }) {
   const reserveDisabled = bike.reserve_disabled ?? !bike.is_available
   const statusClass = bike.status_variant === 'ko' ? 'status-ko' : 'status-ok'
   const reserveClass = bike.status_variant === 'ko' ? 'btn-reserve btn-reserve-danger' : 'btn-reserve'
+  const reserveButtonLabel = reserveDisabled
+    ? statusLabel === 'En maintenance' ? 'Indisponible' : 'Réservé'
+    : 'Réserver'
   const bikeImage = family === 'stepthrough' ? colDeCygneImage : trapezeImage
   const familyLabel = family === 'stepthrough' ? 'Col de cygne' : 'Trapèze'
 
@@ -57,7 +60,7 @@ export default function BikeCard({ bike, onReserve }) {
         onClick={() => onReserve(bike)}
         disabled={reserveDisabled}
       >
-        {reserveDisabled ? 'Déjà pris' : 'Réserver'}
+        {reserveButtonLabel}
       </button>
     </div>
   )

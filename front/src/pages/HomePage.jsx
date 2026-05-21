@@ -35,7 +35,7 @@ function getDefaultSlot() {
 function ActivitySummary({ stats }) {
   if (!stats) return null
   return (
-    <section className="activity-summary" aria-label="Activite personnelle">
+    <section className="activity-summary" aria-label="Activité personnelle">
       <div className="activity-card activity-card-primary">
         <span>Vélos loués</span>
         <strong>{stats.total_reservations}</strong>
@@ -59,6 +59,42 @@ function ActivitySummary({ stats }) {
       <div className="activity-card activity-card-wide">
         <span>Locations actives</span>
         <strong>{stats.active_reservations}</strong>
+      </div>
+    </section>
+  )
+}
+
+function formatReservationDate(value) {
+  if (!value) return '-'
+  return new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function UpcomingReservations({ reservations, bikes }) {
+  if (!reservations.length) return null
+
+  function getBikeName(id) {
+    return bikes.find((bike) => bike.bike_id === id)?.bike_name || `Vélo ${id}`
+  }
+
+  return (
+    <section className="section upcoming-section">
+      <h2>Mes prochaines réservations</h2>
+      <div className="upcoming-list">
+        {reservations.map((reservation) => (
+          <div className="upcoming-item" key={reservation.reservation_id}>
+            <div>
+              <strong>{getBikeName(reservation.bike_id)}</strong>
+              <span>{formatReservationDate(reservation.reservation_date)} - {formatReservationDate(reservation.return_date)}</span>
+            </div>
+            <code>{reservation.reservation_code}</code>
+          </div>
+        ))}
       </div>
     </section>
   )
@@ -88,7 +124,7 @@ export default function HomePage({ currentUser = null }) {
   }, [currentUser])
 
   useEffect(() => {
-    fetchBikes().then(setBikes).catch((err) => setError(err.message || 'Impossible de charger les velos.'))
+    fetchBikes().then(setBikes).catch((err) => setError(err.message || 'Impossible de charger les vélos.'))
     fetchUsers().then(setUsers).catch(() => {})
     fetchReservations().then(setAllReservations).catch(() => {})
   }, [])
@@ -154,6 +190,19 @@ export default function HomePage({ currentUser = null }) {
     })
   }, [bikes, slot.reservation_date, slot.return_date, slotReservations])
 
+  const upcomingReservations = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0]
+    return allReservations
+      .filter((reservation) => {
+        const isMine = currentUser
+          ? reservation.user_id === currentUser.user_id
+          : guestReservationIds.includes(reservation.reservation_id)
+        return isMine && reservation.return_date?.slice(0, 10) >= today
+      })
+      .sort((first, second) => new Date(first.reservation_date) - new Date(second.reservation_date))
+      .slice(0, 3)
+  }, [allReservations, currentUser, guestReservationIds])
+
   async function handleReserve(bike) {
     setError(null)
     setSlot(getDefaultSlot())
@@ -212,23 +261,7 @@ export default function HomePage({ currentUser = null }) {
 
       {currentUser && <ActivitySummary stats={activityStats} />}
 
-      <section className="section user-safety-section">
-        <h2>Consignes de sécurité</h2>
-        <div className="safety-grid">
-          <div>
-            <h3>Avant le départ</h3>
-            <p>Vérifier les freins, la pression des pneus et l'éclairage.</p>
-          </div>
-          <div>
-            <h3>Pendant le trajet</h3>
-            <p>Porter un casque, signaler toute chute et ne jamais laisser le vélo sans antivol.</p>
-          </div>
-          <div>
-            <h3>Au retour</h3>
-            <p>Refermer l'antivol, ranger le vélo à sa place et déclarer tout incident dans l'outil.</p>
-          </div>
-        </div>
-      </section>
+      <UpcomingReservations reservations={upcomingReservations} bikes={bikesWithStatus} />
 
       <section className="section">
         <h2>Vélos disponibles</h2>

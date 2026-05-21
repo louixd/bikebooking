@@ -105,7 +105,7 @@ def open_connection(database_url=None):
 
 
 def ensure_auth_schema(app):
-    """Initialise le schema PostgreSQL et synchronise les admins Entra configures."""
+    """Initialise le schéma PostgreSQL et synchronise les admins Entra configurés."""
     conn = open_connection(app.config['DATABASE_URL'])
     try:
         cursor = conn.cursor()

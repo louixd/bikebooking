@@ -9,12 +9,12 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 @auth_bp.post('/login')
 def login():
-    abort(410, description='La connexion locale est remplacee par Microsoft Entra ID.')
+    abort(410, description='La connexion locale est remplacée par Microsoft Entra ID.')
 
 
 @auth_bp.post('/register')
 def register():
-    abort(410, description='La creation de comptes locaux est remplacee par Microsoft Entra ID.')
+    abort(410, description='La création de comptes locaux est remplacée par Microsoft Entra ID.')
 
 
 @auth_bp.get('/config')
@@ -44,10 +44,22 @@ def my_stats():
     user = get_entra_user_from_request(required=True)
     cursor = get_db().cursor()
 
-    cursor.execute("SELECT COUNT(*) FROM dbo.Reservation WHERE UserId = ?", user['user_id'])
+    counted_reservation_filter = """
+        UserId = ?
+        AND (
+            IsValidate = 1
+            OR EXISTS (
+                SELECT 1
+                FROM dbo.[Return] ret
+                WHERE ret.ReservationId = dbo.Reservation.ReservationId
+            )
+        )
+    """
+
+    cursor.execute(f"SELECT COUNT(*) FROM dbo.Reservation WHERE {counted_reservation_filter}", user['user_id'])
     total_reservations = int(cursor.fetchone()[0] or 0)
 
-    cursor.execute("SELECT COUNT(DISTINCT BikeId) FROM dbo.Reservation WHERE UserId = ?", user['user_id'])
+    cursor.execute(f"SELECT COUNT(DISTINCT BikeId) FROM dbo.Reservation WHERE {counted_reservation_filter}", user['user_id'])
     unique_bikes = int(cursor.fetchone()[0] or 0)
 
     cursor.execute("SELECT COUNT(*) FROM dbo.Reservation WHERE UserId = ? AND IsValidate = 1", user['user_id'])
@@ -77,7 +89,15 @@ def my_stats():
         SELECT bike.BikeName, COUNT(*) AS RentalCount
         FROM dbo.Reservation res
         LEFT JOIN dbo.Bike bike ON bike.BikeId = res.BikeId
-        WHERE res.UserId = ?
+                WHERE res.UserId = ?
+                    AND (
+                            res.IsValidate = 1
+                            OR EXISTS (
+                                    SELECT 1
+                                    FROM dbo.[Return] ret
+                                    WHERE ret.ReservationId = res.ReservationId
+                            )
+                    )
         GROUP BY bike.BikeName
         ORDER BY RentalCount DESC, bike.BikeName ASC
         LIMIT 1

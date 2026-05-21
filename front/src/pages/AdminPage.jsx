@@ -11,6 +11,7 @@ export default function AdminPage({ mode = 'manage' }) {
   const [users, setUsers] = useState([])
   const [bikeForm, setBikeForm] = useState({ bike_name: '', bike_code: '', bike_size: '', bike_description: '', bike_quantity: 1 })
   const [editingBikeId, setEditingBikeId] = useState(null)
+  const [deletingBikeId, setDeletingBikeId] = useState(null)
   const [editBikeForm, setEditBikeForm] = useState({ bike_name: '', bike_code: '', bike_size: '', bike_description: '', is_available: true })
   const [repForm, setRepForm] = useState({ bike_id: '', reparation_description: '' })
   const [closeForm, setCloseForm] = useState({})
@@ -69,11 +70,10 @@ export default function AdminPage({ mode = 'manage' }) {
   }
 
   async function handleDeleteBike(bike) {
-    const confirmed = window.confirm(`Supprimer définitivement ${bike.bike_name} (${bike.bike_code}) ?`)
-    if (!confirmed) return
     try {
       await deleteBike(bike.bike_id)
       if (editingBikeId === bike.bike_id) cancelEditBike()
+      setDeletingBikeId(null)
       load()
     } catch (err) { notify(err.message, true) }
   }
@@ -155,7 +155,7 @@ export default function AdminPage({ mode = 'manage' }) {
           </div>
           <div className="returns-summary-grid">
             <article className="returns-summary-card">
-              <span>Total retours</span>
+              <span>Total des retours</span>
               <strong>{returnsHistory.length}</strong>
             </article>
             <article className="returns-summary-card returns-summary-alert">
@@ -206,7 +206,7 @@ export default function AdminPage({ mode = 'manage' }) {
       {error && <div className="alert-error">{error}</div>}
 
       <section className="section">
-        <h2>Dashboard</h2>
+        <h2>Tableau de bord</h2>
         <div className="dashboard-grid">
           <div className="dashboard-card">
             <span className="dashboard-label">Vélos</span>
@@ -214,12 +214,12 @@ export default function AdminPage({ mode = 'manage' }) {
             <p>Quantité totale dans la flotte.</p>
           </div>
           <div className="dashboard-card">
-            <span className="dashboard-label">Reservations</span>
+            <span className="dashboard-label">Réservations</span>
             <strong>{dashboard.totalReservations}</strong>
             <p>Total des réservations actives.</p>
           </div>
           <div className="dashboard-card">
-            <span className="dashboard-label">Reparations</span>
+            <span className="dashboard-label">Réparations</span>
             <strong>{openReparations.length}</strong>
             <p>Vélos actuellement immobilisés.</p>
           </div>
@@ -258,7 +258,7 @@ export default function AdminPage({ mode = 'manage' }) {
         ) : (
           <table className="reservation-table">
             <thead>
-              <tr><th>Vélo</th><th>Description</th><th>Début</th><th>Date fin</th><th>Coût (€)</th><th>Action</th></tr>
+              <tr><th>Vélo</th><th>Description</th><th>Début</th><th>Date de fin</th><th>Coût (€)</th><th>Action</th></tr>
             </thead>
             <tbody>
               {openReparations.map((r) => {
@@ -339,14 +339,21 @@ export default function AdminPage({ mode = 'manage' }) {
                     <td>
                       <div className="admin-bike-actions">
                         <button className="btn-secondary" onClick={() => startEditBike(bike)}>Modifier</button>
-                        <button
-                          className="btn-cancel"
-                          onClick={() => handleDeleteBike(bike)}
-                          disabled={isBikeReserved(bike.bike_id)}
-                          title={isBikeReserved(bike.bike_id) ? 'Impossible de supprimer un vélo en cours de réservation' : 'Supprimer ce vélo'}
-                        >
-                          Supprimer
-                        </button>
+                        {deletingBikeId === bike.bike_id ? (
+                          <>
+                            <button className="btn-cancel" onClick={() => handleDeleteBike(bike)}>Confirmer</button>
+                            <button className="btn-secondary btn-inline" onClick={() => setDeletingBikeId(null)}>Garder</button>
+                          </>
+                        ) : (
+                          <button
+                            className="btn-cancel"
+                            onClick={() => setDeletingBikeId(bike.bike_id)}
+                            disabled={isBikeReserved(bike.bike_id)}
+                            title={isBikeReserved(bike.bike_id) ? 'Impossible de supprimer un vélo en cours de réservation' : 'Supprimer ce vélo'}
+                          >
+                            Supprimer
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -435,13 +442,13 @@ export default function AdminPage({ mode = 'manage' }) {
             ))}
           </select>
           <textarea
-            placeholder="Description (optionnel)"
+            placeholder="Description (facultative)"
             value={bikeForm.bike_description}
             onChange={(e) => setBikeForm((p) => ({ ...p, bike_description: e.target.value }))}
           />
           <button type="submit" className="btn-primary">Ajouter le vélo</button>
         </form>
-        <p className="admin-form-hint">Si la quantité est supérieure à 1, les codes seront créés automatiquement avec un suffixe: VL-042-01, VL-042-02...</p>
+        <p className="admin-form-hint">Si la quantité est supérieure à 1, les codes seront créés automatiquement avec un suffixe : VL-042-01, VL-042-02...</p>
       </section>
 
       <section className="section">

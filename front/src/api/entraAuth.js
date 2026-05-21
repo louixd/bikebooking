@@ -11,7 +11,7 @@ let startupPromise = null
 
 function getMsalInstance() {
   if (!tenantId || !clientId) {
-    throw new Error('Configuration Entra ID manquante: renseigne VITE_ENTRA_TENANT_ID et VITE_ENTRA_CLIENT_ID.')
+    throw new Error('Configuration Entra ID manquante : renseigne VITE_ENTRA_TENANT_ID et VITE_ENTRA_CLIENT_ID.')
   }
   if (!msalInstance) {
     msalInstance = new PublicClientApplication({

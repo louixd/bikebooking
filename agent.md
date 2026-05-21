@@ -39,7 +39,7 @@ Communication entre conteneurs via le réseau Docker interne (`bikeflow-network`
 
 ## 3. Modèle de données (PostgreSQL)
 
-> Le schema est initialise automatiquement dans `back/app/db.py` au demarrage du backend.
+> Le schéma est initialisé automatiquement dans `back/app/db.py` au démarrage du backend.
 
 ### Table `dbo.Bike`
 

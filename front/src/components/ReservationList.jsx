@@ -37,7 +37,8 @@ export default function ReservationList({ reservations, bikes, users, currentUse
             <td>{getUserName(r)}</td>
             <td>{r.reservation_date?.slice(11, 16)}</td>
             <td>{r.return_date?.slice(11, 16)}</td>
-            <td style={{ display: 'flex', gap: '0.4rem' }}>
+            <td>
+              <div className="reservation-actions">
               {onReturn && canManageReservation(r) && (
                 <button className="btn-return" onClick={() => onReturn(r)}>
                   Retour
@@ -50,6 +51,7 @@ export default function ReservationList({ reservations, bikes, users, currentUse
               ) : !showCancel && onReturn && canManageReservation(r) ? null : (
                 <span className="reservation-muted">Lecture seule</span>
               )}
+              </div>
             </td>
           </tr>
         ))}

@@ -66,7 +66,7 @@ def create_reparation():
 
 @reparations_bp.patch('/<int:reparation_id>/close')
 def close_reparation(reparation_id):
-    """Clore une réparation et remet le vélo disponible."""
+    """Clôture une réparation et remet le vélo à disposition."""
     data = request.get_json()
     if not data or not data.get('reparation_end_date'):
         abort(400, description="reparation_end_date est requis.")

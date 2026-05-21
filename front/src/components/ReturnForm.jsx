@@ -68,7 +68,7 @@ export default function ReturnForm({ reservation, bike, onClose, onSuccess }) {
           <button type="button" className="modal-close" onClick={onClose} aria-label="Fermer le retour">×</button>
         </div>
         <div className="return-summary">
-          <strong>{bike?.bike_name || `Velo #${reservation.bike_id}`}</strong>
+          <strong>{bike?.bike_name || `Vélo n° ${reservation.bike_id}`}</strong>
           <span>Réservation {reservation.reservation_code}</span>
         </div>
         <form onSubmit={handleSubmit}>
@@ -105,7 +105,7 @@ export default function ReturnForm({ reservation, bike, onClose, onSuccess }) {
             onChange={(e) => setComment(e.target.value)}
           />
 
-          <label htmlFor="ret-photos">Photos (optionnel, max 5)</label>
+          <label htmlFor="ret-photos">Photos (optionnelles, max. 5)</label>
           <input
             id="ret-photos"
             type="file"

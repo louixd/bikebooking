@@ -27,7 +27,7 @@ def _row_to_dict(row):
 @returns_bp.get('/')
 @returns_bp.get('')
 def get_returns():
-    """Retourne l'historique des retours, du plus recent au plus ancien."""
+    """Retourne l'historique des retours, du plus récent au plus ancien."""
     cursor = get_db().cursor()
     cursor.execute("""
         SELECT ret.ReturnId, ret.ReservationId, ret.ReturnDate, ret.ProblemState, ret.ReturnState, ret.ReturnComment, ret.MileageKm,
@@ -99,9 +99,9 @@ def create_return():
         try:
             mileage_km = round(float(str(data.get('mileage')).replace(',', '.')), 1)
         except (TypeError, ValueError):
-            abort(400, description="Le kilometrage doit etre un nombre.")
+            abort(400, description="Le kilométrage doit être un nombre.")
         if mileage_km < 0:
-            abort(400, description="Le kilometrage ne peut pas etre negatif.")
+            abort(400, description="Le kilométrage ne peut pas être négatif.")
     comment_parts = []
     if mileage_km is not None:
         comment_parts.append(f"Kilométrage : {mileage_km:g} km")
@@ -127,11 +127,11 @@ def create_return():
     )
     result = _row_to_dict(cursor.fetchone())
 
-    # Email maintenance (best-effort)
+    # Email maintenance envoyé au mieux.
     try:
         cursor.execute("SELECT BikeName, BikeCode FROM dbo.Bike WHERE BikeId = ?", bike_id)
         b = cursor.fetchone()
-        bike_label = f"{b.BikeName} ({b.BikeCode})" if b else f"Bike #{bike_id}"
+        bike_label = f"{b.BikeName} ({b.BikeCode})" if b else f"Vélo n° {bike_id}"
 
         cursor.execute("""
             SELECT r.ReservationCode, r.UserNameFree, u.UserName, u.UserEmail

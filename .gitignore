@@ -7,3 +7,10 @@ node_modules/
 dist/
 .venv/
 *.egg-info/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

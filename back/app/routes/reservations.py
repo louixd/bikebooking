@@ -85,7 +85,7 @@ def create_reservation():
         user_name_free = None
     guest_owner_token = None if user_id else _get_guest_owner_token()
     if not user_id and not user_name_free:
-        abort(400, description="Fournis soit un user_id (utilisateur DB) soit un user_name_free (saisie libre).")
+        abort(400, description="Fournissez soit un user_id (utilisateur DB), soit un user_name_free (saisie libre).")
     if not user_id and not guest_owner_token:
         abort(400, description="Cookie d'identification invité manquant.")
 
@@ -131,7 +131,7 @@ def create_reservation():
     try:
         cursor.execute("SELECT BikeName, BikeCode FROM dbo.Bike WHERE BikeId = ?", data['bike_id'])
         bike_row = cursor.fetchone()
-        bike_label = f"{bike_row.BikeName} ({bike_row.BikeCode})" if bike_row else f"Bike #{data['bike_id']}"
+        bike_label = f"{bike_row.BikeName} ({bike_row.BikeCode})" if bike_row else f"Vélo n° {data['bike_id']}"
 
         if user_id:
             cursor.execute("SELECT UserName, UserEmail FROM dbo.[User] WHERE UserId = ?", user_id)
@@ -147,10 +147,10 @@ def create_reservation():
             f"Code           : {reservation_row.ReservationCode}\n"
             f"Utilisateur    : {user_label}\n"
             f"Modèle de vélo : {bike_label}\n"
-            f"Date début     : {start_dt.strftime('%d/%m/%Y') if start_dt else '-'}\n"
-            f"Heure début    : {start_dt.strftime('%H:%M') if start_dt else '-'}\n"
-            f"Date fin       : {end_dt.strftime('%d/%m/%Y') if end_dt else '-'}\n"
-            f"Heure fin      : {end_dt.strftime('%H:%M') if end_dt else '-'}\n\n"
+            f"Date de début  : {start_dt.strftime('%d/%m/%Y') if start_dt else '-'}\n"
+            f"Heure de début : {start_dt.strftime('%H:%M') if start_dt else '-'}\n"
+            f"Date de fin    : {end_dt.strftime('%d/%m/%Y') if end_dt else '-'}\n"
+            f"Heure de fin   : {end_dt.strftime('%H:%M') if end_dt else '-'}\n\n"
             "— BikeFlow"
         )
         send_email(get_reservation_notify_email(), "Nouvelle réservation de vélo", body)

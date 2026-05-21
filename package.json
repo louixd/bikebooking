@@ -1,0 +1,23 @@
+{
+  "name": "bikebooking",
+  "version": "1.0.0",
+  "description": "Application de réservation de vélos avec un frontend Vite/React, une API Flask et une base PostgreSQL dans Docker.",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/louixd/bikebooking.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/louixd/bikebooking/issues"
+  },
+  "homepage": "https://github.com/louixd/bikebooking#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.9.1"
+  }
+}
