@@ -114,7 +114,7 @@ test.describe('Démonstration visible - administration vélo', () => {
             { reparation_id: 1, bike_id: 1, reparation_description: 'Contrôle freins témoin', reparation_begin_date: '${today}T08:00:00', reparation_end_date: null, reparation_cost: null },
           ];
           const returns = [
-            { return_id: 1, reservation_id: 4, reservation_code: 'RET-001', bike_id: 1, bike_name: 'Vélo admin témoin', return_date: '${today}T11:00:00', return_state: 'ok', problem_state: 'Aucun', return_comment: 'Retour témoin sans anomalie' },
+            { return_id: 1, reservation_id: 4, reservation_code: 'RET-001', bike_id: 1, bike_name: 'Vélo admin témoin', return_date: '${today}T11:00:00', return_state: 'ko', problem_state: 'tire_flat', return_comment: 'Retour témoin avec pneu à vérifier' },
           ];
           const users = [
             { user_id: 1, user_name: 'Admin Démo' },
@@ -254,7 +254,10 @@ test.describe('Démonstration visible - administration vélo', () => {
     await test.step('ouvrir l’historique des retours', async () => {
       await clickWithRedCursor(page, page.locator('nav').getByRole('button', { name: 'Historique des retours' }));
       await expect(page.getByRole('heading', { name: 'Historique des retours' })).toBeVisible();
-      await expect(page.getByText('Retour témoin sans anomalie')).toBeVisible();
+      const returnRow = page.locator('tr').filter({ hasText: 'RET-001' });
+      await expect(returnRow.locator('.return-state-pill', { hasText: 'À vérifier' })).toBeVisible();
+      await expect(page.getByText('Pneu dégonflé')).toBeVisible();
+      await expect(page.getByText('Retour témoin avec pneu à vérifier')).toBeVisible();
       await pauseForViewer(page);
     });
   });

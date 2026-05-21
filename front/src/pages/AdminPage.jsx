@@ -3,6 +3,33 @@ import { fetchBikes, fetchReparations, createReparation, closeReparation, fetchR
 
 const BIKE_SIZES = ['XS', 'S', 'M', 'L', 'XL']
 
+const RETURN_STATE_LABELS = {
+  ok: 'Bon état',
+  ko: 'À vérifier',
+}
+
+const RETURN_PROBLEM_LABELS = {
+  tire_flat: 'Pneu dégonflé',
+  scratches: 'Rayures',
+  mechanical: 'Problème mécanique',
+  other: 'Autre',
+}
+
+function getReturnStateLabel(state) {
+  if (!state) return '-'
+  return RETURN_STATE_LABELS[state] || state
+}
+
+function getReturnProblemLabel(problemState) {
+  if (!problemState || problemState === 'Aucun') return 'Aucun'
+
+  return problemState
+    .split(',')
+    .map((problem) => RETURN_PROBLEM_LABELS[problem.trim()] || problem.trim())
+    .filter(Boolean)
+    .join(', ')
+}
+
 export default function AdminPage({ mode = 'manage' }) {
   const [bikes, setBikes] = useState([])
   const [reparations, setReparations] = useState([])
@@ -184,10 +211,10 @@ export default function AdminPage({ mode = 'manage' }) {
                     <td>{item.bike_name || item.bike_id}</td>
                     <td>
                       <span className={`return-state-pill ${item.return_state === 'ko' ? 'danger' : 'ok'}`}>
-                        {item.return_state || '-'}
+                        {getReturnStateLabel(item.return_state)}
                       </span>
                     </td>
-                    <td>{item.problem_state || 'Aucun'}</td>
+                    <td>{getReturnProblemLabel(item.problem_state)}</td>
                     <td>{item.return_comment || '-'}</td>
                   </tr>
                 ))}
